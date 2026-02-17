@@ -1,12 +1,15 @@
-// delegationApiSlice.js
-import { createAsyncThunk } from '@reduxjs/toolkit';
-import supabase from '../../SupabaseClient';
+import { createAsyncThunk } from "@reduxjs/toolkit";
+import supabase from "../../SupabaseClient";
+import { notifyTaskExtension } from "../../utils/whatsappService";
 
 export const insertDelegationDoneAndUpdate = createAsyncThunk(
-  'delegation/insertDelegationDoneAndUpdate',
+  "delegation/insertDelegationDoneAndUpdate",
   async ({ selectedDataArray, uploadedImages }, { rejectWithValue }) => {
     try {
-      console.log('Processing submission:', { selectedDataArray, uploadedImages });
+      console.log("Processing submission:", {
+        selectedDataArray,
+        uploadedImages,
+      });
 
       const results = [];
 
@@ -17,27 +20,27 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
             task_id: taskData.task_id,
             status: taskData.status, // Should be 'done' or 'extend'
             next_extend_date: taskData.next_extend_date || null,
-            reason: taskData.reason || '',
+            reason: taskData.reason || "",
             name: taskData.name,
             task_description: taskData.task_description,
             given_by: taskData.given_by,
             image_url: taskData.image_url, // Will be updated after image upload
           };
 
-          console.log('Inserting into delegation_done:', delegationDoneData);
+          console.log("Inserting into delegation_done:", delegationDoneData);
 
           const { data: doneData, error: doneError } = await supabase
-            .from('delegation_done')
+            .from("delegation_done")
             .insert([delegationDoneData])
             .select()
             .single();
 
           if (doneError) {
-            console.error('Error inserting delegation_done:', doneError);
+            console.error("Error inserting delegation_done:", doneError);
             throw doneError;
           }
 
-          console.log('Successfully inserted delegation_done:', doneData);
+          console.log("Successfully inserted delegation_done:", doneData);
 
           // Step 2: Handle image upload if exists
           let imageUrl = taskData.image_url;
@@ -45,42 +48,45 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
 
           if (taskImage) {
             try {
-              console.log('Uploading image for task:', taskData.task_id);
+              console.log("Uploading image for task:", taskData.task_id);
 
               // Create a unique filename
               const timestamp = Date.now();
               const fileName = `delegation_${taskData.task_id}_${timestamp}_${taskImage.name}`;
 
               // Upload to Supabase storage
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('checklist-delegation') // Make sure this bucket exists
-                .upload(fileName, taskImage);
+              const { data: uploadData, error: uploadError } =
+                await supabase.storage
+                  .from("checklist-delegation") // Make sure this bucket exists
+                  .upload(fileName, taskImage);
 
               if (uploadError) {
-                console.error('Image upload error:', uploadError);
+                console.error("Image upload error:", uploadError);
                 // Continue without image if upload fails
               } else {
                 // Get public URL
-                const { data: { publicUrl } } = supabase.storage
-                  .from('checklist-delegation')
+                const {
+                  data: { publicUrl },
+                } = supabase.storage
+                  .from("checklist-delegation")
                   .getPublicUrl(fileName);
 
                 imageUrl = publicUrl;
 
                 // Update delegation_done with image URL
                 const { error: updateImageError } = await supabase
-                  .from('delegation_done')
+                  .from("delegation_done")
                   .update({ image_url: imageUrl })
-                  .eq('id', doneData.id);
+                  .eq("id", doneData.id);
 
                 if (updateImageError) {
-                  console.error('Error updating image URL:', updateImageError);
+                  console.error("Error updating image URL:", updateImageError);
                 }
 
-                console.log('Image uploaded successfully:', imageUrl);
+                console.log("Image uploaded successfully:", imageUrl);
               }
             } catch (imageError) {
-              console.error('Image processing error:', imageError);
+              console.error("Image processing error:", imageError);
               // Continue without failing the entire submission
             }
           }
@@ -90,69 +96,79 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
             updated_at: new Date().toISOString(),
             submission_date: new Date().toISOString(),
             image: imageUrl,
-            remarks: taskData.reason
+            remarks: taskData.reason,
           };
 
-          if (taskData.status === 'done') {
+          if (taskData.status === "done") {
             // Mark as completed
-            delegationUpdate.status = 'done';
-          } else if (taskData.status === 'extend') {
+            delegationUpdate.status = "done";
+          } else if (taskData.status === "extend") {
             // Update planned_date for extension
             if (taskData.next_extend_date) {
-              delegationUpdate.planned_date = new Date(taskData.next_extend_date).toISOString();
-              delegationUpdate.status = 'extend';
+              delegationUpdate.planned_date = new Date(
+                taskData.next_extend_date,
+              ).toISOString();
+              delegationUpdate.status = "extend";
+
+              // Notify Admin via WhatsApp
+              notifyTaskExtension(
+                taskData.name,
+                taskData,
+                new Date(taskData.next_extend_date).toLocaleDateString(),
+              );
             }
           }
 
-          console.log('Updating delegation table:', delegationUpdate);
+          console.log("Updating delegation table:", delegationUpdate);
 
           const { data: updateData, error: updateError } = await supabase
-            .from('delegation')
+            .from("delegation")
             .update(delegationUpdate)
-            .eq('task_id', taskData.task_id)
+            .eq("task_id", taskData.task_id)
             .select()
             .single();
 
           if (updateError) {
-            console.error('Error updating delegation:', updateError);
+            console.error("Error updating delegation:", updateError);
             throw updateError;
           }
 
-          console.log('Successfully updated delegation:', updateData);
+          console.log("Successfully updated delegation:", updateData);
 
           results.push({
             task_id: taskData.task_id,
-            status: 'success',
+            status: "success",
             delegation_done: doneData,
             delegation_updated: updateData,
-            image_url: imageUrl
+            image_url: imageUrl,
           });
-
         } catch (taskError) {
-          console.error(`Error processing task ${taskData.task_id}:`, taskError);
+          console.error(
+            `Error processing task ${taskData.task_id}:`,
+            taskError,
+          );
           results.push({
             task_id: taskData.task_id,
-            status: 'error',
-            error: taskError.message
+            status: "error",
+            error: taskError.message,
           });
         }
       }
 
-      console.log('All submissions processed:', results);
+      console.log("All submissions processed:", results);
 
       // Check if any submissions failed
-      const failedTasks = results.filter(r => r.status === 'error');
+      const failedTasks = results.filter((r) => r.status === "error");
       if (failedTasks.length > 0) {
-        console.warn('Some tasks failed:', failedTasks);
+        console.warn("Some tasks failed:", failedTasks);
       }
 
       return results;
-
     } catch (error) {
-      console.error('Batch submission error:', error);
+      console.error("Batch submission error:", error);
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 // export const fetchDelegationDataSortByDate = async () => {
@@ -217,8 +233,6 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
 //   }
 // };
 
-
-
 export const fetchDelegationDataSortByDate = async () => {
   const role = localStorage.getItem("role");
   const username = localStorage.getItem("user-name");
@@ -226,14 +240,14 @@ export const fetchDelegationDataSortByDate = async () => {
 
   try {
     let query = supabase
-      .from('delegation')
-      .select('*')
-      .order('task_start_date', { ascending: true })
-      .or('status.is.null,status.eq.extend');
+      .from("delegation")
+      .select("*")
+      .order("task_start_date", { ascending: true })
+      .or("status.is.null,status.eq.extend");
 
     // Apply role-based filter
-    if (role === 'user' && username) {
-      query = query.eq('name', username);
+    if (role === "user" && username) {
+      query = query.eq("name", username);
     }
     // Admin users see all data (no department filtering)
 
@@ -246,7 +260,6 @@ export const fetchDelegationDataSortByDate = async () => {
 
     console.log("Fetched successfully", data);
     return data;
-
   } catch (error) {
     console.log("Error from Supabase", error);
     return [];
@@ -260,13 +273,13 @@ export const fetchDelegation_DoneDataSortByDate = async () => {
 
   try {
     let query = supabase
-      .from('delegation_done')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .from("delegation_done")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     // Filter by user if role is 'user'
-    if (role === 'user' && username) {
-      query = query.eq('name', username);
+    if (role === "user" && username) {
+      query = query.eq("name", username);
     }
     // Admin users see all data (no department filtering)
 
@@ -279,7 +292,6 @@ export const fetchDelegation_DoneDataSortByDate = async () => {
 
     console.log("Fetched successfully", data);
     return data;
-
   } catch (error) {
     console.log("Error from Supabase", error);
     return [];

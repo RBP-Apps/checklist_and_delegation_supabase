@@ -57,32 +57,26 @@ export const fetchUniqueDepartmentDataApi = async (user_name) => {
   }
 };
 
-
-
-
 export const fetchUniqueGivenByDataApi = async () => {
   try {
     const { data, error } = await supabase
-      .from('users')
-      .select('given_by')
-      .not('given_by', 'is', null)
-      .order('given_by', { ascending: true });
+      .from("users")
+      .select("given_by")
+      .not("given_by", "is", null)
+      .order("given_by", { ascending: true });
 
-
-    const uniqueGivenBy = [...new Set(data.map(d => d.given_by))];
+    const uniqueGivenBy = [...new Set(data.map((d) => d.given_by))];
 
     if (!error) {
-      console.log("fetch succefully", uniqueGivenBy)
-
+      console.log("fetch succefully", uniqueGivenBy);
     } else {
-      console.log("error when fetching data", error)
+      console.log("error when fetching data", error);
     }
     return uniqueGivenBy;
   } catch (error) {
     console.log("error from supabase", error);
-
   }
-}
+};
 
 export const fetchUniqueDoerNameDataApi = async () => {
   try {
@@ -105,12 +99,11 @@ export const fetchUniqueDoerNameDataApi = async () => {
   }
 };
 
-
+import { notifyTaskAssignment } from "../../utils/whatsappService";
 
 export const pushAssignTaskApi = async (generatedTasks) => {
   const submitTable =
     generatedTasks[0]?.frequency === "one-time" ? "delegation" : "checklist";
-
 
   const tasksData = generatedTasks.map((task) => ({
     department: task.department,
@@ -123,23 +116,26 @@ export const pushAssignTaskApi = async (generatedTasks) => {
     require_attachment: task.requireAttachment ? "yes" : "no",
   }));
 
-
   try {
     const { data, error } = await supabase
       .from(submitTable)
-      .insert(tasksData);
+      .insert(tasksData)
+      .select();
 
-    if (!error) {
-      console.log("post succefully", data)
+    if (!error && data) {
+      console.log("post successfully", data);
 
+      // Send individual notifications for newly assigned tasks
+      if (submitTable === "delegation") {
+        data.forEach((task) => {
+          notifyTaskAssignment(task.name, task);
+        });
+      }
     } else {
-      console.log("error when posting data", error)
+      console.log("error when posting data", error);
     }
     return data;
   } catch (error) {
     console.log("error from supabase", error);
-
   }
-}
-
-
+};
