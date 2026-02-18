@@ -2,23 +2,28 @@ import supabase from "../../SupabaseClient";
 
 // Update fetchChecklistData to support pagination and filtering
 // More efficient approach using window functions (if supported by Supabase)
-export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = '') => {
+export const fetchChecklistData = async (
+  page = 0,
+  pageSize = 50,
+  nameFilter = "",
+) => {
   try {
     const start = page * pageSize;
     const end = start + pageSize - 1;
 
     // Step 1: Get unique task_descriptions with conditions applied at database level
     let uniqueQuery = supabase
-      .from('checklist')
-      .select('task_description')
-      .is('submission_date', null)
-      .not('task_description', 'is', null);
+      .from("checklist")
+      .select("task_description")
+      .is("submission_date", null)
+      .not("task_description", "is", null);
 
     if (nameFilter) {
-      uniqueQuery = uniqueQuery.eq('name', nameFilter);
+      uniqueQuery = uniqueQuery.eq("name", nameFilter);
     }
 
-    const { data: allUniqueDescriptions, error: uniqueError } = await uniqueQuery;
+    const { data: allUniqueDescriptions, error: uniqueError } =
+      await uniqueQuery;
 
     if (uniqueError) {
       console.log("Error when fetching unique descriptions", uniqueError);
@@ -28,14 +33,14 @@ export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = '
     // Get truly unique descriptions (client-side dedupe for descriptions only)
     const seenDescriptions = new Set();
     const uniqueDescriptions = (allUniqueDescriptions || [])
-      .map(row => row.task_description)
-      .filter(desc => {
+      .map((row) => row.task_description)
+      .filter((desc) => {
         if (!desc || seenDescriptions.has(desc)) return false;
         seenDescriptions.add(desc);
         return true;
       });
 
-    console.log("Total unique descriptions found:", uniqueDescriptions.length);
+    console.log("Total unique descriptions found:", uniqueDescriptions);
 
     if (uniqueDescriptions.length === 0) {
       return { data: [], total: 0 };
@@ -50,14 +55,14 @@ export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = '
 
     // Step 3: Fetch actual data only for the paginated unique descriptions
     let dataQuery = supabase
-      .from('checklist')
-      .select('*')
-      .in('task_description', paginatedDescriptions)
-      .is('submission_date', null)
-      .order('task_start_date', { ascending: true });
+      .from("checklist")
+      .select("*")
+      .in("task_description", paginatedDescriptions)
+      .is("submission_date", null)
+      .order("task_start_date", { ascending: true });
 
     if (nameFilter) {
-      dataQuery = dataQuery.eq('name', nameFilter);
+      dataQuery = dataQuery.eq("name", nameFilter);
     }
 
     const { data, error } = await dataQuery;
@@ -69,7 +74,7 @@ export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = '
 
     // Final client-side deduplication (should be minimal now)
     const finalSeen = new Set();
-    const finalData = (data || []).filter(row => {
+    const finalData = (data || []).filter((row) => {
       if (finalSeen.has(row.task_description)) {
         console.log("Final duplicate found:", row.task_description);
         return false;
@@ -78,13 +83,19 @@ export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = '
       return true;
     });
 
-    console.log("Page", page, "-> Fetched:", finalData.length, "Unique total:", uniqueDescriptions.length);
-    
-    return { 
-      data: finalData, 
-      total: uniqueDescriptions.length
+    console.log(
+      "Page",
+      page,
+      "-> Fetched:",
+      finalData.length,
+      "Unique total:",
+      uniqueDescriptions.length,
+    );
+
+    return {
+      data: finalData,
+      total: uniqueDescriptions.length,
     };
-   
   } catch (error) {
     console.log("Error from Supabase", error);
     return { data: [], total: 0 };
@@ -92,23 +103,28 @@ export const fetchChecklistData = async (page = 0, pageSize = 50, nameFilter = '
 };
 
 // Update fetchDelegationData similarly
-export const fetchDelegationData = async (page = 0, pageSize = 50, nameFilter = '') => {
+export const fetchDelegationData = async (
+  page = 0,
+  pageSize = 50,
+  nameFilter = "",
+) => {
   try {
     const start = page * pageSize;
     const end = start + pageSize - 1;
 
     // Step 1: Get unique task_descriptions with conditions applied at database level
     let uniqueQuery = supabase
-      .from('delegation')
-      .select('task_description')
-      .is('submission_date', null)
-      .not('task_description', 'is', null);
+      .from("delegation")
+      .select("task_description")
+      .is("submission_date", null)
+      .not("task_description", "is", null);
 
     if (nameFilter) {
-      uniqueQuery = uniqueQuery.eq('name', nameFilter);
+      uniqueQuery = uniqueQuery.eq("name", nameFilter);
     }
 
-    const { data: allUniqueDescriptions, error: uniqueError } = await uniqueQuery;
+    const { data: allUniqueDescriptions, error: uniqueError } =
+      await uniqueQuery;
 
     if (uniqueError) {
       console.log("Error when fetching unique descriptions", uniqueError);
@@ -118,14 +134,17 @@ export const fetchDelegationData = async (page = 0, pageSize = 50, nameFilter = 
     // Get truly unique descriptions
     const seenDescriptions = new Set();
     const uniqueDescriptions = (allUniqueDescriptions || [])
-      .map(row => row.task_description)
-      .filter(desc => {
+      .map((row) => row.task_description)
+      .filter((desc) => {
         if (!desc || seenDescriptions.has(desc)) return false;
         seenDescriptions.add(desc);
         return true;
       });
 
-    console.log("Total unique delegation descriptions found:", uniqueDescriptions.length);
+    console.log(
+      "Total unique delegation descriptions found:",
+      uniqueDescriptions.length,
+    );
 
     if (uniqueDescriptions.length === 0) {
       return { data: [], total: 0 };
@@ -140,14 +159,14 @@ export const fetchDelegationData = async (page = 0, pageSize = 50, nameFilter = 
 
     // Step 3: Fetch actual data only for the paginated unique descriptions
     let dataQuery = supabase
-      .from('delegation')
-      .select('*')
-      .in('task_description', paginatedDescriptions)
-      .is('submission_date', null)
-      .order('task_id', { ascending: true });
+      .from("delegation")
+      .select("*")
+      .in("task_description", paginatedDescriptions)
+      .is("submission_date", null)
+      .order("task_id", { ascending: true });
 
     if (nameFilter) {
-      dataQuery = dataQuery.eq('name', nameFilter);
+      dataQuery = dataQuery.eq("name", nameFilter);
     }
 
     const { data, error } = await dataQuery;
@@ -159,7 +178,7 @@ export const fetchDelegationData = async (page = 0, pageSize = 50, nameFilter = 
 
     // Final client-side deduplication
     const finalSeen = new Set();
-    const finalData = (data || []).filter(row => {
+    const finalData = (data || []).filter((row) => {
       if (finalSeen.has(row.task_description)) {
         console.log("Final delegation duplicate found:", row.task_description);
         return false;
@@ -168,13 +187,19 @@ export const fetchDelegationData = async (page = 0, pageSize = 50, nameFilter = 
       return true;
     });
 
-    console.log("Delegation Page", page, "-> Fetched:", finalData.length, "Unique total:", uniqueDescriptions.length);
-    
-    return { 
-      data: finalData, 
-      total: uniqueDescriptions.length
+    console.log(
+      "Delegation Page",
+      page,
+      "-> Fetched:",
+      finalData.length,
+      "Unique total:",
+      uniqueDescriptions.length,
+    );
+
+    return {
+      data: finalData,
+      total: uniqueDescriptions.length,
     };
-   
   } catch (error) {
     console.log("Error from Supabase delegation", error);
     return { data: [], total: 0 };
@@ -189,7 +214,7 @@ export const deleteChecklistTasksApi = async (tasks) => {
       .eq("name", task.name)
       .eq("task_description", task.task_description)
       .is("submission_date", null); // only delete if submission_date is null
- 
+
     if (error) throw error;
   }
   return tasks;
@@ -201,7 +226,7 @@ export const deleteDelegationTasksApi = async (taskIds) => {
     .delete()
     .in("task_id", taskIds)
     .is("submission_date", null); // ✅ only delete if submission_date IS NULL
- 
+
   if (error) throw error;
   return taskIds;
 };
@@ -210,7 +235,7 @@ export const deleteDelegationTasksApi = async (taskIds) => {
 export const updateChecklistTaskApi = async (updatedTask, originalTask) => {
   try {
     console.log("Updating with:", { updatedTask, originalTask }); // Debug log
-    
+
     const { data, error } = await supabase
       .from("checklist")
       .update({
@@ -222,7 +247,7 @@ export const updateChecklistTaskApi = async (updatedTask, originalTask) => {
         // frequency: updatedTask.frequency,
         enable_reminder: updatedTask.enable_reminder,
         require_attachment: updatedTask.require_attachment,
-        remark: updatedTask.remark
+        remark: updatedTask.remark,
       })
       .eq("department", originalTask.department)
       .eq("name", originalTask.name)
@@ -237,53 +262,32 @@ export const updateChecklistTaskApi = async (updatedTask, originalTask) => {
 
     console.log("Update successful:", data);
     return data;
-
   } catch (error) {
     console.error("API Error:", error);
     throw error;
   }
 };
 
-
-
 // Add this new function
 export const fetchUsersData = async () => {
   try {
     const { data, error } = await supabase
-      .from('users')
-      .select('user_name')
-      .not('user_name', 'is', null); // Only get rows where user_name is not null
-      
+      .from("users")
+      .select("user_name")
+      .not("user_name", "is", null); // Only get rows where user_name is not null
+
     if (error) {
       console.log("Error when fetching users", error);
       return [];
     }
- 
+
     console.log("Fetched users successfully", data);
     return data;
-   
   } catch (error) {
     console.log("Error from Supabase", error);
     return [];
   }
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // import supabase from "../../SupabaseClient";
 
@@ -291,24 +295,24 @@ export const fetchUsersData = async () => {
 //   try {
 //     const { data, error } = await supabase
 //       .from('checklist')
-//       .select('*') 
+//       .select('*')
 //       .order("task_start_date", { ascending: true });
-      
+
 //     if (error) {
 //       console.log("Error when fetching data", error);
 //       return [];
 //     }
- 
+
 //     const seen = new Set();
 //     const uniqueRows = data.filter(row => {
 //       if (seen.has(row.task_description)) return false;
 //       seen.add(row.task_description);
 //       return true;
 //     });
- 
+
 //     console.log("Fetched successfully", uniqueRows);
 //     return uniqueRows;
-   
+
 //   } catch (error) {
 //     console.log("Error from Supabase", error);
 //     return [];
@@ -321,22 +325,22 @@ export const fetchUsersData = async () => {
 //       .from('delegation')
 //       .select('*')
 //       .order('task_id', { ascending: true });
-            
+
 //     if (error) {
 //       console.log("Error when fetching data", error);
 //       return [];
 //     }
- 
+
 //     const seen = new Set();
 //     const uniqueRows = data.filter(row => {
 //       if (seen.has(row.task_description)) return false;
 //       seen.add(row.task_description);
 //       return true;
 //     });
- 
+
 //     console.log("Fetched successfully", uniqueRows);
 //     return uniqueRows;
-   
+
 //   } catch (error) {
 //     console.log("Error from Supabase", error);
 //     return [];
@@ -351,7 +355,7 @@ export const fetchUsersData = async () => {
 //       .eq("name", task.name)
 //       .eq("task_description", task.task_description)
 //       .is("submission_date", null); // only delete if submission_date is null
- 
+
 //     if (error) throw error;
 //   }
 //   return tasks;
@@ -363,7 +367,7 @@ export const fetchUsersData = async () => {
 //     .delete()
 //     .in("task_id", taskIds)
 //     .is("submission_date", null); // ✅ only delete if submission_date IS NULL
- 
+
 //   if (error) throw error;
 //   return taskIds;
 // };
@@ -372,7 +376,7 @@ export const fetchUsersData = async () => {
 // export const updateChecklistTaskApi = async (updatedTask, originalTask) => {
 //   try {
 //     console.log("Updating with:", { updatedTask, originalTask }); // Debug log
-    
+
 //     const { data, error } = await supabase
 //       .from("checklist")
 //       .update({

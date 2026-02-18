@@ -151,41 +151,27 @@ export const notifyTaskAssignment = async (userName, task) => {
 };
 
 /**
- * Notifies the admin when a task/delegation is extended
+ * Notifies the task allocator (given_by person) when a delegation is extended
  * Template: TASK EXTENSION NOTICE
- * Recipient: Admin
+ * Recipient: The person who allocated the task (task.given_by)
  */
 export const notifyTaskExtension = async (userName, task, nextDate) => {
-  const ADMIN_NUMBER = "+917024225700";
+  const allocatorName = task.given_by;
 
-  const message = `🔄 *TASK EXTENSION NOTICE*\nDear Admin,\n\nThis is to inform you that the deadline for a delegated task has been extended for ${userName}. Please find the updated details below:\n\n📌 Task ID: ${task.task_id}\n🧑💼 Allocated By: ${task.given_by}\n📝 Task Description: ${task.task_description}\n\n⏳ Updated Deadline: ${nextDate}\n✅ Closure Link: https://checklist-delegation-supabase-six.vercel.app\n\nPlease ensure the task is completed within the new timeline. If you require any support, feel free to contact the concerned person.\n\nBest regards,\nThe Divine Empire India Pvt. Ltd.`;
+  if (!allocatorName) {
+    console.warn(
+      "⚠️ notifyTaskExtension: task.given_by is missing, cannot notify allocator.",
+    );
+    return;
+  }
+
+  const message = `🔄 *TASK EXTENSION NOTICE*\nDear ${allocatorName},\n\nThis is to inform you that the deadline for a delegated task has been extended for ${userName}. Please find the updated details below:\n\n📌 Task ID: ${task.task_id}\n� Assigned To: ${userName}\n📝 Task Description: ${task.task_description}\n\n⏳ Updated Deadline: ${nextDate}\n✅ Closure Link: https://checklist-delegation-supabase-six.vercel.app\n\nPlease ensure the task is completed within the new timeline. If you require any support, feel free to contact the concerned person.\n\nBest regards,\nThe Divine Empire India Pvt. Ltd.`;
 
   try {
-    const {
-      VITE_MAYTAPI_PRODUCT_ID: productId,
-      VITE_MAYTAPI_TOKEN: token,
-      VITE_MAYTAPI_PHONE_ID: phoneId,
-    } = import.meta.env;
-
-    const response = await fetch(
-      `https://api.maytapi.com/api/${productId}/${phoneId}/sendMessage`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-maytapi-key": token,
-        },
-        body: JSON.stringify({
-          to_number: ADMIN_NUMBER,
-          type: "text",
-          message: message,
-        }),
-      },
+    await sendWhatsAppNotification(allocatorName, message);
+    console.log(
+      `✅ Allocator (${allocatorName}) notified of extension (Task ${task.task_id})`,
     );
-
-    const result = await response.json();
-    if (result.success)
-      console.log(`✅ Admin notified of extension (Task ${task.task_id})`);
   } catch (error) {
     console.error("🛑 Extension Notification Error:", error);
   }
