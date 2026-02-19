@@ -11,28 +11,38 @@ export const fetchChecklistData = async (
     const start = page * pageSize;
     const end = start + pageSize - 1;
 
-    // Step 1: Get unique task_descriptions with conditions applied at database level
-    let uniqueQuery = supabase
-      .from("checklist")
-      .select("task_description")
-      .is("submission_date", null)
-      .not("task_description", "is", null);
+    // Step 1: Paginated fetch of all task_descriptions
+    // Supabase server-side max is 1000 rows — .limit() cannot override it.
+    // We use .range() in a loop to fetch all rows in batches.
+    let allRawRows = [];
+    let from = 0;
+    const BATCH = 1000;
+    while (true) {
+      let q = supabase
+        .from("checklist")
+        .select("task_description")
+        .is("submission_date", null)
+        .not("task_description", "is", null)
+        .range(from, from + BATCH - 1);
 
-    if (nameFilter) {
-      uniqueQuery = uniqueQuery.eq("name", nameFilter);
+      if (nameFilter) q = q.eq("name", nameFilter);
+
+      const { data: batch, error: batchError } = await q;
+      if (batchError) {
+        console.log("Error fetching batch", batchError);
+        return { data: [], total: 0 };
+      }
+      if (!batch || batch.length === 0) break;
+      allRawRows = [...allRawRows, ...batch];
+      if (batch.length < BATCH) break; // last page
+      from += BATCH;
     }
 
-    const { data: allUniqueDescriptions, error: uniqueError } =
-      await uniqueQuery;
+    console.log("Total raw rows fetched:", allRawRows.length);
 
-    if (uniqueError) {
-      console.log("Error when fetching unique descriptions", uniqueError);
-      return { data: [], total: 0 };
-    }
-
-    // Get truly unique descriptions (client-side dedupe for descriptions only)
+    // Deduplicate task_descriptions client-side
     const seenDescriptions = new Set();
-    const uniqueDescriptions = (allUniqueDescriptions || [])
+    const uniqueDescriptions = allRawRows
       .map((row) => row.task_description)
       .filter((desc) => {
         if (!desc || seenDescriptions.has(desc)) return false;
@@ -195,6 +205,7 @@ export const fetchDelegationData = async (
       "Unique total:",
       uniqueDescriptions.length,
     );
+    console.log("Final Data", finalData);
 
     return {
       data: finalData,
