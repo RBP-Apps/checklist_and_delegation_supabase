@@ -127,8 +127,12 @@ export const pushAssignTaskApi = async (generatedTasks) => {
 
       // Send individual notifications for newly assigned tasks
       if (submitTable === "delegation") {
-        data.forEach((task) => {
-          notifyTaskAssignment(task.name, task);
+        data.forEach(async (task) => {
+          await notifyTaskAssignment(task.name, task);
+          await supabase
+            .from("delegation")
+            .update({ message_status: new Date().toISOString() })
+            .eq("task_id", task.task_id);
         });
       }
     } else {

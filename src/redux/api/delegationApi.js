@@ -109,6 +109,7 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
                 taskData.next_extend_date,
               ).toISOString();
               delegationUpdate.status = "extend";
+              delegationUpdate.message_status = new Date().toISOString();
 
               // Notify Admin via WhatsApp
               notifyTaskExtension(
