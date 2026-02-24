@@ -167,10 +167,15 @@ export const notifyTaskExtension = async (userName, task, nextDate) => {
 
   const message = `🔄 *TASK EXTENSION NOTICE*\nDear ${allocatorName},\n\nThis is to inform you that the deadline for a delegated task has been extended for ${userName}. Please find the updated details below:\n\n📌 Task ID: ${task.task_id}\n� Assigned To: ${userName}\n📝 Task Description: ${task.task_description}\n\n⏳ Updated Deadline: ${nextDate}\n✅ Closure Link: https://checklist-delegation-supabase-six.vercel.app\n\nPlease ensure the task is completed within the new timeline. If you require any support, feel free to contact the concerned person.\n\nBest regards,\nThe Divine Empire India Pvt. Ltd.`;
 
+  const userMessage = `🔄 *TASK EXTENSION NOTICE*\nDear ${userName},\n\nYour extension request for the following task has been recorded:\n\n📌 Task ID: ${task.task_id}\n📝 Task Description: ${task.task_description}\n\n⏳ Updated Deadline: ${nextDate}\n✅ Closure Link: https://checklist-delegation-supabase-six.vercel.app\n\nPlease ensure the task is completed within the new timeline.\n\nBest regards,\nThe Divine Empire India Pvt. Ltd.`;
+
   try {
-    await sendWhatsAppNotification(allocatorName, message);
+    await Promise.all([
+      sendWhatsAppNotification(allocatorName, message),
+      sendWhatsAppNotification(userName, userMessage),
+    ]);
     console.log(
-      `✅ Allocator (${allocatorName}) notified of extension (Task ${task.task_id})`,
+      `✅ Both ${allocatorName} and ${userName} notified of extension (Task ${task.task_id})`,
     );
   } catch (error) {
     console.error("🛑 Extension Notification Error:", error);
