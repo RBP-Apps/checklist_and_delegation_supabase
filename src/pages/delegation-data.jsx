@@ -279,9 +279,9 @@ function DelegationPage({ searchTerm, nameFilter, freqFilter, setNameFilter, set
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">
                     TASK START DATE
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-yellow-50">
                     TASK END DATE
-                  </th>
+                  </th> */}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     FREQ
                   </th>
@@ -336,9 +336,9 @@ function DelegationPage({ searchTerm, nameFilter, freqFilter, setNameFilter, set
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
                         {formatDateTime(task.task_start_date) || "—"}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
+                      {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 bg-yellow-50">
                         {formatDateTime(task.submission_date) || "—"}
-                      </td>
+                      </td> */}
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         <span className={`px-2 py-1 rounded-full text-xs ${task.frequency === 'Daily' ? 'bg-blue-100 text-blue-800' :
                             task.frequency === 'Weekly' ? 'bg-green-100 text-green-800' :

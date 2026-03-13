@@ -25,6 +25,7 @@ export default function QuickTask() {
 
   const {
     filteredChecklistTasks,
+    allDepartments,
     loading,
     allNames,
     allFrequencies,
@@ -42,6 +43,7 @@ export default function QuickTask() {
       <QuickTaskHeader
         loading={loading}
         allNames={allNames}
+        allDepartments={allDepartments}
         allFrequencies={allFrequencies}
         onTabChange={handleTabChange}
         onNameSelect={handleNameFilterSelect}
@@ -63,19 +65,21 @@ export default function QuickTask() {
       )}
 
       {activeTab === "checklist" ? (
-        (console.log("Checklist Data", filteredChecklistTasks),
         (
-          <ChecklistTable
-            tasks={filteredChecklistTasks}
-            userRole={userRole}
-            tableRef={tableContainerRef}
-            loading={loading}
-            hasMore={checklistHasMore}
-            onSave={handleSaveEdit}
-            onCancel={() => {}} // Cancel is handled in store call inside component
-            isSaving={isSaving}
-          />
-        ))
+          (
+            <ChecklistTable
+              tasks={filteredChecklistTasks}
+              allDepartments={allDepartments}
+              allNames={allNames}
+              userRole={userRole}
+              tableRef={tableContainerRef}
+              loading={loading}
+              hasMore={checklistHasMore}
+              onSave={handleSaveEdit}
+              onCancel={() => { }} // Cancel is handled in store call inside component
+              isSaving={isSaving}
+            />
+          ))
       ) : (
         <DelegationPage
           searchTerm={searchTerm}

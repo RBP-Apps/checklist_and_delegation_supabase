@@ -67,12 +67,10 @@ useEffect(() => {
         table: "users",
       },
       (payload) => {
-        console.log("📡 Realtime event received:", payload); // 👈 Add this
         const updatedUser = payload.new;
         const previousUser = payload.old;
 
         if (previousUser?.status === "active" && updatedUser?.status === "inactive") {
-          console.log("🚨 User changed from active → inactive:", updatedUser.user_name);
           if (Notification.permission === "granted") {
             new Notification("User Logged Out", {
               body: `User "${updatedUser.user_name}" has been logged out.`,
@@ -82,7 +80,6 @@ useEffect(() => {
         }
       }
     )
-    .subscribe((status) => console.log("✅ Subscribed to admin Realtime:", status));
 
   return () => {
     supabase.removeChannel(adminSubscription);

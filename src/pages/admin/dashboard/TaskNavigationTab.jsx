@@ -40,14 +40,6 @@ export default function TaskNavigationTabs({
     try {
       setIsLoadingMore(true)
 
-      console.log('Loading tasks with filters:', {
-        dashboardType,
-        dashboardStaffFilter,
-        taskView,
-        page,
-        departmentFilter
-      });
-
       // Use departmentFilter for server call (only affects table data)
       const data = await fetchDashboardDataApi(
         dashboardType,
@@ -73,7 +65,6 @@ export default function TaskNavigationTabs({
         return
       }
 
-      console.log('Raw data received:', data.length, 'records');
 
       // Process the data similar to your existing logic
       const processedTasks = data.map((task) => {
@@ -100,8 +91,6 @@ export default function TaskNavigationTabs({
         }
       })
 
-      console.log('Processed tasks:', processedTasks.length, 'records');
-
       // Apply client-side search filter if needed
       let filteredTasks = processedTasks.filter((task) => {
         if (searchQuery && searchQuery.trim() !== "") {
@@ -114,8 +103,6 @@ export default function TaskNavigationTabs({
         }
         return true
       })
-
-      console.log('Final filtered tasks:', filteredTasks.length, 'records');
 
       if (append) {
         setDisplayedTasks(prev => [...prev, ...filteredTasks])

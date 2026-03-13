@@ -101,7 +101,7 @@ export const createUserApi = async (newUser) => {
           password: newUser.password,
           email_id: newUser.email,
           number: newUser.phone,
-          employee_id: newUser.employee_id, // Add this line
+          employee_id: newUser.employee_id || null, // Add this line
           role: newUser.role,
           status: newUser.status,
           user_access: newUser.user_access,
@@ -132,7 +132,7 @@ export const updateUserDataApi = async ({ id, updatedUser }) => {
       password: updatedUser.password,
       email_id: updatedUser.email_id,
       number: updatedUser.number,
-      employee_id: updatedUser.employee_id, // Add this line
+      employee_id: updatedUser.employee_id || null, // Add this line
       role: updatedUser.role,
       status: updatedUser.status,
       user_access: updatedUser.user_access,

@@ -6,6 +6,7 @@ import { CONFIG } from "../../config/quickTaskConfig";
 const QuickTaskHeader = ({
   loading,
   allNames,
+  allDepartments,
   allFrequencies,
   onTabChange,
   onNameSelect,
@@ -103,54 +104,17 @@ const QuickTaskHeader = ({
           <div className="flex gap-2">
             {/* Name Filter */}
             <div className="relative" ref={nameFilterRef}>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    size={16}
-                  />
-                  <input
-                    type="text"
-                    placeholder="Type or select name..."
-                    value={nameFilter}
-                    onChange={(e) => {
-                      setNameFilter(e.target.value);
-                      if (e.target.value === "") {
-                        onNameSelect(""); // Clear if empty
-                      } else if (allNames.includes(e.target.value)) {
-                        onNameSelect(e.target.value);
-                      }
-                    }}
-                    className="w-48 pl-10 pr-4 py-2 border border-purple-200 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-                    list="nameOptions"
-                  />
-                  <datalist id="nameOptions">
-                    {allNames.map((name) => (
-                      <option key={name} value={name} />
-                    ))}
-                  </datalist>
-                  {nameFilter && (
-                    <button
-                      onClick={() => {
-                        setNameFilter("");
-                        onNameSelect("");
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
-                </div>
-                <button
-                  onClick={() => toggleDropdown("name")}
-                  className="px-3 py-2 border border-purple-200 rounded-md bg-white hover:bg-gray-50"
-                >
-                  <ChevronDown
-                    size={16}
-                    className={`transition-transform ${dropdownOpen.name ? "rotate-180" : ""}`}
-                  />
-                </button>
-              </div>
+              <button
+                onClick={() => toggleDropdown("name")}
+                className="flex items-center gap-2 px-3 py-2 border border-purple-200 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50"
+              >
+                <Filter className="h-4 w-4" />
+                {nameFilter || "All Names"}
+                <ChevronDown
+                  size={16}
+                  className={`transition-transform ${dropdownOpen.name ? "rotate-180" : ""}`}
+                />
+              </button>
 
               {dropdownOpen.name && (
                 <div className="absolute z-50 mt-1 w-56 rounded-md bg-white shadow-lg border border-gray-200 max-h-60 overflow-auto top-full right-0">

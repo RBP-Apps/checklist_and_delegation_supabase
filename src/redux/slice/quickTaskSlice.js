@@ -19,16 +19,16 @@ export const fetchUsers = createAsyncThunk(
 
 export const uniqueChecklistTaskData = createAsyncThunk(
   'fetch/checklistTask',
-  async ({ page = 0, pageSize = 50, nameFilter = '', append = false }) => {
-    const result = await fetchChecklistData(page, pageSize, nameFilter);
+  async ({ page = 0, pageSize = 50, nameFilter = '', deptFilter = '', append = false }) => {
+    const result = await fetchChecklistData(page, pageSize, nameFilter, deptFilter);
     return { ...result, append };
   }
 );
 
 export const uniqueDelegationTaskData = createAsyncThunk(
   'fetch/delegationTask',
-  async ({ page = 0, pageSize = 50, nameFilter = '', append = false }) => {
-    const result = await fetchDelegationData(page, pageSize, nameFilter);
+  async ({ page = 0, pageSize = 50, nameFilter = '', deptFilter = '', append = false }) => {
+    const result = await fetchDelegationData(page, pageSize, nameFilter, deptFilter);
     return { ...result, append };
   }
 );
@@ -79,6 +79,9 @@ const quickTaskSlice = createSlice({
     users: [],
     error: null,
     loading: false,
+    usersLoading: false,
+    checklistLoading: false,
+    delegationLoading: false,
     checklistPage: 0,
     checklistTotal: 0,
     checklistHasMore: true,
@@ -101,10 +104,12 @@ const quickTaskSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(uniqueChecklistTaskData.pending, (state) => {
+        state.checklistLoading = true;
         state.loading = true;
         state.error = null;
       })
       .addCase(uniqueChecklistTaskData.fulfilled, (state, action) => {
+        state.checklistLoading = false;
         state.loading = false;
         const { data, total, append } = action.payload;
         
@@ -120,15 +125,18 @@ const quickTaskSlice = createSlice({
         state.checklistHasMore = state.quickTask.length < total;
       })
       .addCase(uniqueChecklistTaskData.rejected, (state, action) => {
+        state.checklistLoading = false;
         state.loading = false;
         state.error = action.payload;
       })
       
       .addCase(uniqueDelegationTaskData.pending, (state) => {
+        state.delegationLoading = true;
         state.loading = true;
         state.error = null;
       })
       .addCase(uniqueDelegationTaskData.fulfilled, (state, action) => {
+        state.delegationLoading = false;
         state.loading = false;
         const { data, total, append } = action.payload;
         
@@ -144,6 +152,7 @@ const quickTaskSlice = createSlice({
         state.delegationHasMore = state.delegationTasks.length < total;
       })
       .addCase(uniqueDelegationTaskData.rejected, (state, action) => {
+        state.delegationLoading = false;
         state.loading = false;
         state.error = action.payload;
       })
@@ -177,15 +186,15 @@ const quickTaskSlice = createSlice({
       })
 
       .addCase(fetchUsers.pending, (state) => {
-        state.loading = true;
+        state.usersLoading = true;
         state.error = null;
       })
       .addCase(fetchUsers.fulfilled, (state, action) => {
-        state.loading = false;
+        state.usersLoading = false;
         state.users = action.payload;
       })
       .addCase(fetchUsers.rejected, (state, action) => {
-        state.loading = false;
+        state.usersLoading = false;
         state.error = action.payload;
       })
 

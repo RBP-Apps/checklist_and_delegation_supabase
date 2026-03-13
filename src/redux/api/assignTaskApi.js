@@ -28,7 +28,6 @@ export const fetchUniqueDepartmentDataApi = async (user_name) => {
       }
 
       const uniqueDepartments = [...new Set(data.map((d) => d.department))];
-      console.log("Admin departments:", uniqueDepartments);
       return uniqueDepartments;
     }
 
@@ -46,7 +45,6 @@ export const fetchUniqueDepartmentDataApi = async (user_name) => {
       }
 
       const uniqueDepartments = [...new Set(data.map((d) => d.department))];
-      console.log("User restricted department:", uniqueDepartments);
       return uniqueDepartments;
     }
 
@@ -68,7 +66,7 @@ export const fetchUniqueGivenByDataApi = async () => {
     const uniqueGivenBy = [...new Set(data.map((d) => d.given_by))];
 
     if (!error) {
-      console.log("fetch succefully", uniqueGivenBy);
+      console.log("fetch succefully");
     } else {
       console.log("error when fetching data", error);
     }
@@ -89,7 +87,7 @@ export const fetchUniqueDoerNameDataApi = async () => {
     const uniqueDoerName = [...new Set(data?.map((d) => d.user_name))];
 
     if (!error) {
-      console.log("Fetched all active users successfully", uniqueDoerName);
+      console.log("Fetched all active users successfully");
     } else {
       console.log("Error when fetching user names", error);
     }

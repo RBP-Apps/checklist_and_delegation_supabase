@@ -5,6 +5,8 @@ import useQuickTaskUIStore from '../../stores/useQuickTaskUIStore';
 
 const ChecklistTable = ({
     tasks,
+    allDepartments,
+    allNames,
     userRole,
     tableRef,
     loading,
@@ -60,16 +62,16 @@ const ChecklistTable = ({
                                     />
                                 </th>
                             )}
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                             {renderSortHeader("Department", "department")}
                             {renderSortHeader("Given By", "given_by")}
                             {renderSortHeader("Name", "name")}
                             {renderSortHeader("Task Description", "task_description")}
-                            {renderSortHeader("Start Date", "task_start_date", "bg-yellow-50")}
-                            {renderSortHeader("End Date", "submission_date", "bg-yellow-50")}
+                            {renderSortHeader("End Date", "task_start_date", "bg-yellow-50")}
+                            {/* {renderSortHeader("End Date", "submission_date", "bg-yellow-50")} */}
                             {renderSortHeader("Frequency", "frequency")}
                             {renderSortHeader("Reminders", "enable_reminder")}
                             {renderSortHeader("Attachment", "require_attachment")}
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -90,10 +92,35 @@ const ChecklistTable = ({
                                         </td>
                                     )}
 
-                                    {/* Department */}
+                                    {/* Actions */}
+                                    <td className="px-6 py-4 text-sm text-gray-500">
+                                        {isEditing ? (
+                                            <div className="flex gap-2">
+                                                <button onClick={onSave} disabled={isSaving} className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
+                                                    <Save size={14} /> {isSaving ? '...' : 'Save'}
+                                                </button>
+                                                <button onClick={cancelEditing} className="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
+                                                    <X size={14} /> Cancel
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button onClick={() => startEditing(task)} className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+                                                <Edit size={14} /> Edit
+                                            </button>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
                                         {isEditing ? (
-                                            <input value={editFormData.department} onChange={e => updateEditForm('department', e.target.value)} className="w-full border rounded px-2 py-1" />
+                                            <select 
+                                                value={editFormData.department} 
+                                                onChange={e => updateEditForm('department', e.target.value)} 
+                                                className="w-full border rounded px-2 py-1"
+                                            >
+                                                <option value="">Select Department</option>
+                                                {allDepartments.map(dept => (
+                                                    <option key={dept} value={dept}>{dept}</option>
+                                                ))}
+                                            </select>
                                         ) : task.department}
                                     </td>
 
@@ -107,7 +134,16 @@ const ChecklistTable = ({
                                     {/* Name */}
                                     <td className="px-6 py-4 text-sm text-gray-500">
                                         {isEditing ? (
-                                            <input value={editFormData.name} onChange={e => updateEditForm('name', e.target.value)} className="w-full border rounded px-2 py-1" />
+                                            <select 
+                                                value={editFormData.name} 
+                                                onChange={e => updateEditForm('name', e.target.value)} 
+                                                className="w-full border rounded px-2 py-1"
+                                            >
+                                                <option value="">Select Name</option>
+                                                {allNames.map(name => (
+                                                    <option key={name} value={name}>{name}</option>
+                                                ))}
+                                            </select>
                                         ) : task.name}
                                     </td>
 
@@ -120,31 +156,19 @@ const ChecklistTable = ({
 
                                     {/* Start Date */}
                                     <td className="px-6 py-4 text-sm text-gray-500 bg-yellow-50">
-                                        {isEditing ? (
-                                            <input type="datetime-local" value={editFormData.task_start_date ? new Date(editFormData.task_start_date).toISOString().slice(0, 16) : ''} onChange={e => updateEditForm('task_start_date', e.target.value)} className="w-full border rounded px-2 py-1" />
-                                        ) : formatTimestampToDDMMYYYY(task.task_start_date)}
+                                        {formatTimestampToDDMMYYYY(task.task_start_date)}
                                     </td>
 
                                     {/* End Date */}
-                                    <td className="px-6 py-4 text-sm text-gray-500 bg-yellow-50">
+                                    {/* <td className="px-6 py-4 text-sm text-gray-500 bg-yellow-50">
                                         {formatTimestampToDDMMYYYY(task.submission_date)}
-                                    </td>
+                                    </td> */}
 
                                     {/* Frequency */}
                                     <td className="px-6 py-4 text-sm text-gray-500">
-                                        {isEditing ? (
-                                            <select value={editFormData.frequency} onChange={e => updateEditForm('frequency', e.target.value)} className="w-full border rounded px-2 py-1">
-                                                <option value="">Select</option>
-                                                <option value="Daily">Daily</option>
-                                                <option value="Weekly">Weekly</option>
-                                                <option value="Monthly">Monthly</option>
-                                                <option value="Yearly">Yearly</option>
-                                            </select>
-                                        ) : (
-                                            <span className={`px-2 py-1 rounded-full text-xs ${task.frequency === 'Daily' ? 'bg-blue-100 text-blue-800' : task.frequency === 'Weekly' ? 'bg-green-100 text-green-800' : task.frequency === 'Monthly' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                {task.frequency}
-                                            </span>
-                                        )}
+                                        <span className={`px-2 py-1 rounded-full text-xs ${task.frequency === 'Daily' ? 'bg-blue-100 text-blue-800' : task.frequency === 'Weekly' ? 'bg-green-100 text-green-800' : task.frequency === 'Monthly' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'}`}>
+                                            {task.frequency}
+                                        </span>
                                     </td>
 
                                     {/* Reminder */}
@@ -169,31 +193,19 @@ const ChecklistTable = ({
                                         ) : task.require_attachment || "—"}
                                     </td>
 
-                                    {/* Actions */}
-                                    <td className="px-6 py-4 text-sm text-gray-500">
-                                        {isEditing ? (
-                                            <div className="flex gap-2">
-                                                <button onClick={onSave} disabled={isSaving} className="flex items-center gap-1 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50">
-                                                    <Save size={14} /> {isSaving ? '...' : 'Save'}
-                                                </button>
-                                                <button onClick={cancelEditing} className="flex items-center gap-1 px-3 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">
-                                                    <X size={14} /> Cancel
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <button onClick={() => startEditing(task)} className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
-                                                <Edit size={14} /> Edit
-                                            </button>
-                                        )}
-                                    </td>
                                 </tr>
                             );
-                        }) : (
-                            <tr><td colSpan={11} className="px-6 py-4 text-center text-gray-500">No tasks found</td></tr>
-                        )}
+                        }) : (loading && tasks.length === 0 && (
+                            <tr>
+                                <td colSpan={11} className="px-6 py-10 text-center">
+                                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500"></div>
+                                    <p className="mt-2 text-purple-600 font-medium">Loading tasks...</p>
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
-                {loading && hasMore && (
+                {loading && hasMore && tasks.length > 0 && (
                     <div className="text-center py-4">
                         <div className="inline-block animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
                     </div>

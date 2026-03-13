@@ -16,6 +16,9 @@ export const useQuickTaskData = () => {
   const {
     quickTask,
     loading,
+    usersLoading,
+    checklistLoading,
+    delegationLoading,
     delegationTasks,
     users,
     checklistPage,
@@ -51,6 +54,12 @@ export const useQuickTaskData = () => {
       .sort();
   }, [users]);
 
+  const allDepartments = useMemo(() => {
+    return [...new Set(users.map((u) => u.department))]
+      .filter((dept) => dept && typeof dept === "string" && dept.trim() !== "")
+      .sort();
+  }, [users]);
+
   const allFrequencies = useMemo(() => {
     return [
       ...new Set([
@@ -82,7 +91,7 @@ export const useQuickTaskData = () => {
       });
     }
     return filtered;
-  }, [quickTask, freqFilter, searchTerm, sortConfig]);
+  }, [quickTask, freqFilter, searchTerm, nameFilter, sortConfig]);
 
   // Infinite Scroll Handler
   const handleScroll = useCallback(() => {
@@ -155,11 +164,14 @@ export const useQuickTaskData = () => {
     closeDropdowns();
   };
 
+
   return {
     tableContainerRef,
     filteredChecklistTasks,
-    loading,
+    loading: activeTab === 'checklist' ? checklistLoading : delegationLoading,
+    usersLoading,
     allNames,
+    allDepartments,
     allFrequencies,
     handleTabChange,
     handleNameFilterSelect,

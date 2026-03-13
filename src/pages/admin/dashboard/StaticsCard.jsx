@@ -108,7 +108,7 @@ export default function StatisticsCards({
           </div>
 
           {/* Not Done Tasks */}
-          <div className="rounded-lg border border-l-4 border-l-gray-500 shadow-md hover:shadow-lg transition-all bg-white">
+          {/* <div className="rounded-lg border border-l-4 border-l-gray-500 shadow-md hover:shadow-lg transition-all bg-white">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2 bg-gradient-to-r from-gray-50 to-gray-100 rounded-tr-lg p-3 sm:p-4">
               <h3 className="text-xs sm:text-sm font-medium text-gray-700">Not Done</h3>
               <XCircle className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500" />
@@ -123,7 +123,7 @@ export default function StatisticsCards({
                 )}
               </p>
             </div>
-          </div>
+          </div> */}
 
           {/* Overdue Tasks / Completed 3+ Times */}
           <div className="rounded-lg border border-l-4 border-l-red-500 shadow-md hover:shadow-lg transition-all bg-white sm:col-span-2 lg:col-span-1 col-span-2">

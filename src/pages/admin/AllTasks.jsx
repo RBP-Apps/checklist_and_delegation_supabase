@@ -227,7 +227,7 @@ const AllTasks = () => {
               ) : (
                 <tr>
                   <td colSpan={tableHeaders.length + 3} className="px-6 py-4 text-center text-gray-500">
-                    {searchQuery ? "No tasks found matching the search" : "No tasks found"}
+                    {searchQuery ? "No tasks found matching the search" : ""}
                   </td>
                 </tr>
               )}

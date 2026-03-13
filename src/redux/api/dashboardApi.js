@@ -14,7 +14,6 @@ export const fetchDashboardDataApi = async (
   endDate = null
 ) => {
   try {
-    console.log('Fetching dashboard data:', { dashboardType, staffFilter, page, limit, taskView, departmentFilter });
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -98,7 +97,6 @@ export const fetchDashboardDataApi = async (
       throw error;
     }
 
-    console.log(`Fetched ${data?.length || 0} records for ${taskView} view`);
     return data || [];
 
   } catch (error) {
@@ -348,7 +346,6 @@ export const getDashboardSummaryApi = async (dashboardType, staffFilter = null) 
 // Alternative version if you want to see detailed task breakdown for debugging
 export const fetchStaffTasksDataApi = async (dashboardType, staffFilter = null, departmentFilter = null, page = 1, limit = 20, selectedMonth = null) => {
   try {
-    console.log('Fetching staff tasks data:', { dashboardType, staffFilter, departmentFilter, page, limit, selectedMonth });
 
     const role = localStorage.getItem('role');
     const username = localStorage.getItem('user-name');
@@ -367,15 +364,6 @@ export const fetchStaffTasksDataApi = async (dashboardType, staffFilter = null, 
     const startDate = `${year}-${month.toString().padStart(2, '0')}-01`;
     const lastDayOfMonth = new Date(year, month, 0).getDate();
     const endDate = `${year}-${month.toString().padStart(2, '0')}-${lastDayOfMonth.toString().padStart(2, '0')}`;
-
-    console.log('Date range for filtering:', {
-      startDate,
-      endDate,
-      year,
-      month,
-      lastDayOfMonth,
-      selectedMonth
-    });
 
     // Build the query
     let query = supabase
@@ -406,8 +394,6 @@ export const fetchStaffTasksDataApi = async (dashboardType, staffFilter = null, 
       console.error("Error fetching tasks data:", error);
       throw error;
     }
-
-    console.log(`Found ${tasksData.length} tasks in date range ${startDate} to ${endDate}`);
 
     // Process data to match SQL query structure
     const summary = {};
@@ -480,7 +466,6 @@ export const fetchStaffTasksDataApi = async (dashboardType, staffFilter = null, 
     const to = from + limit;
     const paginatedResults = staffResults.slice(from, to);
 
-    console.log(`Fetched ${paginatedResults.length} staff members with task data for ${month}/${year}`);
     return paginatedResults;
 
   } catch (error) {
@@ -539,7 +524,6 @@ export const getStaffTasksCountApi = async (dashboardType, staffFilter = null, d
 
     // Count unique staff names
     const uniqueStaff = new Set(data.map(item => `${item.department}-${item.name}`));
-    console.log(`Total unique staff count for ${month}/${year}: ${uniqueStaff.size}`);
     return uniqueStaff.size;
 
   } catch (error) {
@@ -587,7 +571,6 @@ export const getTotalUsersCountApi = async (departmentFilter = null) => {
       throw error;
     }
 
-    console.log(`Total users count${departmentFilter && departmentFilter !== 'all' ? ` for department ${departmentFilter}` : ''}: ${count}`);
     return count || 0;
   } catch (error) {
     console.error("Error from Supabase:", error);
@@ -669,15 +652,6 @@ export const fetchChecklistDataByDateRangeApi = async (
   statusFilter = 'all'
 ) => {
   try {
-    console.log('Fetching checklist data by date range:', {
-      startDate,
-      endDate,
-      staffFilter,
-      departmentFilter,
-      page,
-      limit,
-      statusFilter
-    });
 
     const from = (page - 1) * limit;
     const to = from + limit - 1;
@@ -742,7 +716,6 @@ export const fetchChecklistDataByDateRangeApi = async (
       throw error;
     }
 
-    console.log(`✅ Fetched ${data?.length || 0} records for date range ${startDate} to ${endDate}`);
     return data || [];
 
   } catch (error) {
@@ -818,7 +791,6 @@ export const getChecklistDateRangeCountApi = async (
       throw error;
     }
 
-    console.log('🔢 Date range count result:', { startDate, endDate, count, statusFilter });
     return count || 0;
 
   } catch (error) {
@@ -837,10 +809,6 @@ export const getDashboardDateRangeStatsApi = async (
   try {
     const role = localStorage.getItem('role');
     const username = localStorage.getItem('user-name');
-
-    console.log('📊 getDashboardDateRangeStatsApi called with:', {
-      dashboardType, startDate, endDate, staffFilter, departmentFilter
-    });
 
     let totalQuery = supabase
       .from(dashboardType)
@@ -875,8 +843,6 @@ export const getDashboardDateRangeStatsApi = async (
       throw totalError;
     }
 
-    console.log('📊 Total tasks in date range:', totalTasks);
-
     // Get completed tasks count
     let completedQuery = supabase
       .from(dashboardType)
@@ -910,8 +876,6 @@ export const getDashboardDateRangeStatsApi = async (
       console.error("Error counting completed tasks:", completedError);
       throw completedError;
     }
-
-    console.log('📊 Completed tasks in date range:', completedTasks);
 
     // Calculate pending tasks (total - completed)
     const pendingTasks = totalTasks - completedTasks;
@@ -953,8 +917,6 @@ export const getDashboardDateRangeStatsApi = async (
       throw overdueError;
     }
 
-    console.log('📊 Overdue tasks in date range:', overdueTasks);
-
     const completionRate = totalTasks > 0 ? ((completedTasks / totalTasks) * 100).toFixed(1) : 0;
 
     const result = {
@@ -964,8 +926,6 @@ export const getDashboardDateRangeStatsApi = async (
       overdueTasks: overdueTasks || 0,
       completionRate: parseFloat(completionRate),
     };
-
-    console.log('📊 Final stats for date range:', result);
     return result;
 
   } catch (error) {
@@ -982,13 +942,6 @@ export const fetchCompleteChecklistDataByDateRangeApi = async (
   statusFilter = 'all'
 ) => {
   try {
-    console.log('🚀 Fetching COMPLETE checklist data for date range:', {
-      startDate,
-      endDate,
-      staffFilter,
-      departmentFilter,
-      statusFilter
-    });
 
     const allData = [];
     let page = 1;
@@ -1004,10 +957,7 @@ export const fetchCompleteChecklistDataByDateRangeApi = async (
       statusFilter
     );
 
-    console.log(`📈 Expected total records: ${totalCount}`);
-
     while (hasMore) {
-      console.log(`📄 Fetching page ${page}...`);
 
       const data = await fetchChecklistDataByDateRangeApi(
         startDate,
@@ -1021,28 +971,22 @@ export const fetchCompleteChecklistDataByDateRangeApi = async (
 
       if (data && data.length > 0) {
         allData.push(...data);
-        console.log(`📊 Page ${page}: ${data.length} records | Total: ${allData.length}/${totalCount}`);
 
         // Stop if we've reached the end or got all expected data
         if (data.length < limit || allData.length >= totalCount) {
           hasMore = false;
-          console.log(`✅ Reached end of data at page ${page}`);
         } else {
           page++;
         }
       } else {
         hasMore = false;
-        console.log(`🛑 No more data at page ${page}`);
       }
 
       // Safety limit
       if (page > 100) {
-        console.warn('⚠️ Safety limit reached - stopping pagination');
         hasMore = false;
       }
     }
-
-    console.log(`🎉 Successfully fetched ALL ${allData.length} records`);
 
     // Verify count
     if (totalCount && allData.length !== totalCount) {
