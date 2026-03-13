@@ -8,7 +8,7 @@ import {
     getUniqueDepartmentsApi as getDeptApi,
     getStaffNamesByDepartmentApi as getStaffApi,
     fetchChecklistDataByDateRangeApi as fetchDateRangeApi,
-    getChecklistDateRangeStatsApi as getStatsApi
+    getDashboardDateRangeStatsApi as getStatsApi
 } from '../redux/api/dashboardApi';
 
 import {
@@ -21,7 +21,8 @@ import {
 import {
     parseTaskStartDate,
     formatDateToDDMMYYYY,
-    isDateInPast
+    isDateInPast,
+    ensureYYYYMMDD
 } from '../utils/dateUtils';
 
 export const useDashboardData = () => {
@@ -63,7 +64,7 @@ export const useDashboardData = () => {
     });
 
     // Helper: Process Filtered Data
-    const processFilteredData = (data, stats) => {
+    const processFilteredData = (data, stats, isFilteredOverride = false) => {
         const username = localStorage.getItem("user-name");
         const userRole = localStorage.getItem("role");
         const today = new Date();
@@ -193,7 +194,7 @@ export const useDashboardData = () => {
         }));
 
         // Also update date range stats if we are filtering
-        if (dateRange.filtered) {
+        if (dateRange.filtered || isFilteredOverride) {
             useDashboardStore.getState().setFilteredDateStats({ // Access store directly or expose setter
                 totalTasks: finalStats.totalTasks,
                 completedTasks: finalStats.completedTasks,
@@ -439,7 +440,10 @@ export const useDashboardData = () => {
     // Date Range Helpers
     const fetchDepartmentDataWithDateRange = async (startDate, endDate) => {
         try {
-            const data = await fetchApi(dashboardType, dashboardStaffFilter, 1, batchSize, 'all', departmentFilter);
+            const normalizedStart = ensureYYYYMMDD(startDate);
+            const normalizedEnd = ensureYYYYMMDD(endDate);
+
+            const data = await fetchApi(dashboardType, dashboardStaffFilter, 1, batchSize, 'all', departmentFilter, normalizedStart, normalizedEnd);
 
             const start = new Date(startDate);
             start.setHours(0, 0, 0, 0);
@@ -497,7 +501,7 @@ export const useDashboardData = () => {
                 completionRate: totalTasks > 0 ? (completedTasks / totalTasks * 100) : 0
             };
 
-            processFilteredData(filteredData, stats);
+            processFilteredData(filteredData, stats, true);
 
         } catch (error) {
             console.error("Error fetching data with date range:", error);
@@ -516,9 +520,12 @@ export const useDashboardData = () => {
                 setIsLoadingMore(true);
 
                 if (dashboardType === "checklist") {
+                    const normalizedStart = ensureYYYYMMDD(startDate);
+                    const normalizedEnd = ensureYYYYMMDD(endDate);
+
                     const filteredData = await fetchDateRangeApi(
-                        startDate,
-                        endDate,
+                        normalizedStart,
+                        normalizedEnd,
                         dashboardStaffFilter,
                         departmentFilter,
                         1,
@@ -527,13 +534,14 @@ export const useDashboardData = () => {
                     );
 
                     const stats = await getStatsApi(
-                        startDate,
-                        endDate,
+                        dashboardType,
+                        normalizedStart,
+                        normalizedEnd,
                         dashboardStaffFilter,
                         departmentFilter
                     );
 
-                    processFilteredData(filteredData, stats);
+                    processFilteredData(filteredData, stats, true);
                 } else {
                     await fetchDepartmentDataWithDateRange(startDate, endDate);
                 }

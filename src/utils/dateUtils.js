@@ -176,3 +176,42 @@ export const isDateTomorrow = (dateStr) => {
   date.setHours(0, 0, 0, 0);
   return date.getTime() === tomorrow.getTime();
 };
+
+/**
+ * Normalizes any date string to YYYY-MM-DD for Supabase queries
+ */
+export const ensureYYYYMMDD = (dateStr) => {
+  if (!dateStr) return "";
+
+  // If already YYYY-MM-DD
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+    return dateStr.split('T')[0].split(' ')[0];
+  }
+
+  // If DD-MM-YYYY or DD/MM/YYYY
+  const match = dateStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (match) {
+    const [_, d, m, y] = match;
+    return `${y}-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+  }
+
+  // Fallback to Date object parsing
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr;
+
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+/**
+ * Formats YYYY-MM-DD to DD/MM/YYYY for UI display
+ */
+export const formatDisplayDate = (dateStr) => {
+  if (!dateStr) return "";
+  const normalized = ensureYYYYMMDD(dateStr);
+  if (!normalized) return "";
+  const [y, m, d] = normalized.split('-');
+  return `${d}/${m}/${y}`;
+};

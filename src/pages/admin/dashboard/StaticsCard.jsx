@@ -9,7 +9,7 @@ export default function StatisticsCards({
   dateRange = null // Add dateRange prop to show filter info
 }) {
   const completionRate = totalTask > 0 ? (completeTask / totalTask) * 100 : 0;
-  const notDoneTask = totalTask - completeTask - pendingTask - overdueTask;
+  const notDoneTask = totalTask - completeTask;
 
   // Calculate all percentages
   const pendingRate = totalTask > 0 ? (pendingTask / totalTask) * 100 : 0;
@@ -49,10 +49,8 @@ export default function StatisticsCards({
               <p className="text-xs text-blue-600">
                 {dateRange ? (
                   <>Tasks in selected period</>
-                ) : dashboardType === "delegation" ? (
-                  "All tasks"
                 ) : (
-                  "Current Month's tasks"
+                  "Tasks till date"
                 )}
               </p>
             </div>
@@ -78,10 +76,8 @@ export default function StatisticsCards({
               <p className="text-xs text-green-600">
                 {dateRange ? (
                   <>Completed in period</>
-                ) : dashboardType === "delegation" ? (
-                  "Tasks completed once"
                 ) : (
-                  "Current Month's completed"
+                  "Completed till date"
                 )}
               </p>
             </div>
@@ -104,10 +100,8 @@ export default function StatisticsCards({
               <p className="text-xs text-amber-600">
                 {dateRange ? (
                   <>Pending in period</>
-                ) : dashboardType === "delegation" ? (
-                  "Tasks completed twice"
                 ) : (
-                  "Overdue + today"
+                  " today"
                 )}
               </p>
             </div>
@@ -124,10 +118,8 @@ export default function StatisticsCards({
               <p className="text-xs text-gray-600">
                 {dateRange ? (
                   <>Not done in period</>
-                ) : dashboardType === "delegation" ? (
-                  "Tasks not completed"
                 ) : (
-                  "Current month's not done"
+                  "Not done till date"
                 )}
               </p>
             </div>
@@ -150,10 +142,8 @@ export default function StatisticsCards({
               <p className="text-xs text-red-600">
                 {dateRange ? (
                   <>Overdue in period</>
-                ) : dashboardType === "delegation" ? (
-                  "Tasks completed 3+ times"
                 ) : (
-                  "Current Month's due"
+                  "Overdue till date"
                 )}
               </p>
             </div>

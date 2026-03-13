@@ -75,20 +75,18 @@ function AccountDataPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Debounce search and filter updates
+  // Debounce filter updates (removed searchTerm to prevent API overriding client-side search)
   useEffect(() => {
     const timer = setTimeout(() => {
       dispatch(checklistData({
         page: 1,
-        searchTerm,
+        searchTerm: '', // Keep empty as we search client-side
         statusFilter: statusLabelFilter
       }));
-      // Reset page locally
-      // Note: slice handles resetting data when page is 1
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm, statusLabelFilter, dispatch]);
+  }, [statusLabelFilter, dispatch]);
 
   const handleScrollPending = useCallback(() => {
     if (!tableContainerRef.current || loading || isFetchingMore || !hasMore || checklist.length === 0) return
@@ -384,22 +382,26 @@ function AccountDataPage() {
     }
   };
 
-  // Filtered data for pending tasks - Simplified as server handles main filtering
+  // Filtered data for pending tasks
   const filteredAccountData = useMemo(() => {
     if (!Array.isArray(checklist)) return [];
 
-    // The API now handles:
-    // 1. Pagination
-    // 2. Search (searchTerm)
-    // 3. Status Filtering (today, upcoming, overdue)
-    // 4. Role-based filtering
+    let filtered = checklist;
 
-    // So we just return the checklist as is, or apply minor client-side tweaks if needed.
-    // We can keep the sort just in case, though API does it too.
+    // Apply search filter across all columns
+    if (searchTerm) {
+      filtered = filtered.filter((account) =>
+        Object.values(account).some(
+          (value) =>
+            value &&
+            value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
 
-    return checklist;
+    return filtered;
 
-  }, [checklist]);
+  }, [checklist, searchTerm]);
 
   const filteredHistoryData = useMemo(() => {
     if (!Array.isArray(history)) return []
@@ -946,27 +948,37 @@ function AccountDataPage() {
             <>
               {/* History Filters */}
               <div className="p-3 sm:p-4 border-b border-purple-100 bg-gray-50">
-                <div className="flex flex-col gap-3 sm:gap-4">
+                <div className="flex flex-col sm:flex-row items-end gap-3 sm:gap-4">
                   {getFilteredMembersList().length > 0 && (
                     <div className="flex flex-col">
                       <div className="mb-2 flex items-center">
                         <span className="text-xs sm:text-sm font-medium text-purple-700">Filter by Member:</span>
                       </div>
-                      <div className="flex flex-wrap gap-2 sm:gap-3 max-h-32 overflow-y-auto p-2 border border-gray-200 rounded-md bg-white">
-                        {getFilteredMembersList().map((member, idx) => (
-                          <div key={idx} className="flex items-center">
-                            <input
-                              id={`member-${idx}`}
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                              checked={selectedMembers.includes(member)}
-                              onChange={() => handleMemberSelection(member)}
-                            />
-                            <label htmlFor={`member-${idx}`} className="ml-2 text-xs sm:text-sm text-gray-700">
+                      <div className="relative w-full sm:w-64">
+                        <select
+                          className="w-full appearance-none bg-white border border-gray-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
+                          value={selectedMembers.length > 0 ? selectedMembers[0] : ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                              setSelectedMembers([val]);
+                            } else {
+                              setSelectedMembers([]);
+                            }
+                          }}
+                        >
+                          <option value="">All Members</option>
+                          {getFilteredMembersList().map((member, idx) => (
+                            <option key={idx} value={member}>
                               {member}
-                            </label>
-                          </div>
-                        ))}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-500">
+                          <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                          </svg>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -985,7 +997,7 @@ function AccountDataPage() {
                           onChange={(e) => {
                             setStartDate(e.target.value);
                           }}
-                          className="text-xs sm:text-sm border border-gray-200 rounded-md p-1 flex-1 sm:flex-none"
+                          className="text-xs sm:text-sm border border-gray-200 rounded-md p-2 flex-1 sm:flex-none"
                         />
                       </div>
                       <div className="flex items-center w-full sm:w-auto">
@@ -998,7 +1010,7 @@ function AccountDataPage() {
                           onChange={(e) => {
                             setEndDate(e.target.value);
                           }}
-                          className="text-xs sm:text-sm border border-gray-200 rounded-md p-1 flex-1 sm:flex-none"
+                          className="text-xs sm:text-sm border border-gray-200 rounded-md p-2 flex-1 sm:flex-none"
                         />
                       </div>
                     </div>
@@ -1006,7 +1018,7 @@ function AccountDataPage() {
                   {(selectedMembers.length > 0 || startDate || endDate || searchTerm) && (
                     <button
                       onClick={resetFilters}
-                      className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-xs sm:text-sm w-full sm:w-auto"
+                      className="px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-xs sm:text-sm w-full sm:w-auto mb-[2px] h-[38px] sm:h-[42px]"
                     >
                       Clear All Filters
                     </button>

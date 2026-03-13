@@ -45,44 +45,50 @@ export const fetchDashboardDataApi = async (
       query = query.eq('name', staffFilter);
     }
 
-    // Apply task view filtering on server side
-    switch (taskView) {
-      case 'recent':
-        // Today's tasks only
-        query = query.gte('task_start_date', `${today}T00:00:00`)
-          .lte('task_start_date', `${today}T23:59:59`);
-        if (dashboardType === 'checklist') {
-          // Exclude completed tasks for recent view
-          query = query.or('status.is.null,status.neq.yes');
-        }
-        break;
+    // Apply date range filter if provided
+    if (startDate && endDate) {
+      query = query.gte('task_start_date', `${startDate} 00:00:00`)
+        .lte('task_start_date', `${endDate} 23:59:59`);
+    } else {
+      // Apply task view filtering on server side
+      switch (taskView) {
+        case 'recent':
+          // Today's tasks only
+          query = query.gte('task_start_date', `${today} 00:00:00`)
+            .lte('task_start_date', `${today} 23:59:59`);
+          if (dashboardType === 'checklist') {
+            // Exclude completed tasks for recent view
+            query = query.or('status.is.null,status.neq.yes');
+          }
+          break;
 
-      case 'upcoming':
-        // Tomorrow's tasks only
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
-        query = query.gte('task_start_date', `${tomorrowStr}T00:00:00`)
-          .lte('task_start_date', `${tomorrowStr}T23:59:59`);
-        break;
+        case 'upcoming':
+          // Tomorrow's tasks only
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          const tomorrowStr = tomorrow.toISOString().split('T')[0];
+          query = query.gte('task_start_date', `${tomorrowStr} 00:00:00`)
+            .lte('task_start_date', `${tomorrowStr} 23:59:59`);
+          break;
 
-      case 'overdue':
-        // Tasks before today that are not completed AND have null submission_date
-        query = query.lt('task_start_date', `${today}T00:00:00`)
-          .is('submission_date', null);
+        case 'overdue':
+          // Tasks before today that are not completed AND have null submission_date
+          query = query.lt('task_start_date', `${today} 00:00:00`)
+            .is('submission_date', null);
 
-        if (dashboardType === 'checklist') {
-          query = query.or('status.is.null,status.neq.yes');
-        } else if (dashboardType === 'delegation') {
-          query = query.neq('status', 'done');
-        }
-        break;
+          if (dashboardType === 'checklist') {
+            query = query.or('status.is.null,status.neq.yes');
+          } else if (dashboardType === 'delegation') {
+            query = query.neq('status', 'done');
+          }
+          break;
 
-      default:
-        // For 'all' or other views, don't add additional date filters
-        // but still limit to tasks up to today for statistics consistency
-        query = query.lte('task_start_date', `${today}T23:59:59`);
-        break;
+        default:
+          // For 'all' or other views, don't add additional date filters
+          // but still limit to tasks up to today for statistics consistency
+          query = query.lte('task_start_date', `${today} 23:59:59`);
+          break;
+      }
     }
 
     const { data, error } = await query;
@@ -129,8 +135,8 @@ export const getDashboardDataCount = async (dashboardType, staffFilter = null, t
     // Apply task view filtering
     switch (taskView) {
       case 'recent':
-        query = query.gte('task_start_date', `${today}T00:00:00`)
-          .lte('task_start_date', `${today}T23:59:59`);
+        query = query.gte('task_start_date', `${today} 00:00:00`)
+          .lte('task_start_date', `${today} 23:59:59`);
         if (dashboardType === 'checklist') {
           query = query.or('status.is.null,status.neq.yes');
         }
@@ -140,13 +146,13 @@ export const getDashboardDataCount = async (dashboardType, staffFilter = null, t
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const tomorrowStr = tomorrow.toISOString().split('T')[0];
-        query = query.gte('task_start_date', `${tomorrowStr}T00:00:00`)
-          .lte('task_start_date', `${tomorrowStr}T23:59:59`);
+        query = query.gte('task_start_date', `${tomorrowStr} 00:00:00`)
+          .lte('task_start_date', `${tomorrowStr} 23:59:59`);
         break;
 
       case 'overdue':
         // Tasks before today that are not completed AND have null submission_date
-        query = query.lt('task_start_date', `${today}T00:00:00`)
+        query = query.lt('task_start_date', `${today} 00:00:00`)
           .is('submission_date', null);
 
         if (dashboardType === 'checklist') {
@@ -157,7 +163,7 @@ export const getDashboardDataCount = async (dashboardType, staffFilter = null, t
         break;
 
       default:
-        query = query.lte('task_start_date', `${today}T23:59:59`);
+        query = query.lte('task_start_date', `${today} 23:59:59`);
         break;
     }
 
@@ -277,15 +283,15 @@ export const countPendingOrDelayTaskApi = async (dashboardType, staffFilter = nu
         .from('delegation')
         .select('*', { count: 'exact', head: true })
         .is('submission_date', null)
-        .gte('task_start_date', `${today}T00:00:00`)
-        .lte('task_start_date', `${today}T23:59:59`);
+        .gte('task_start_date', `${today} 00:00:00`)
+        .lte('task_start_date', `${today} 23:59:59`);
     } else {
       query = supabase
         .from('checklist')
         .select('*', { count: 'exact', head: true })
         .or('status.is.null,status.neq.yes')
-        .gte('task_start_date', `${today}T00:00:00`)
-        .lte('task_start_date', `${today}T23:59:59`);
+        .gte('task_start_date', `${today} 00:00:00`)
+        .lte('task_start_date', `${today} 23:59:59`);
     }
 
     // Apply filters
@@ -375,8 +381,8 @@ export const fetchStaffTasksDataApi = async (dashboardType, staffFilter = null, 
     let query = supabase
       .from(dashboardType)
       .select('*')
-      .gte('task_start_date', `${startDate}T00:00:00`)
-      .lte('task_start_date', `${endDate}T23:59:59`)
+      .gte('task_start_date', `${startDate} 00:00:00`)
+      .lte('task_start_date', `${endDate} 23:59:59`)
       .not('name', 'is', null);
 
     // Apply role-based filtering
@@ -505,8 +511,8 @@ export const getStaffTasksCountApi = async (dashboardType, staffFilter = null, d
     let query = supabase
       .from(dashboardType)
       .select('department, name')
-      .gte('task_start_date', `${startDate}T00:00:00`)
-      .lte('task_start_date', `${endDate}T23:59:59`)
+      .gte('task_start_date', `${startDate} 00:00:00`)
+      .lte('task_start_date', `${endDate} 23:59:59`)
       .not('name', 'is', null);
 
     // Apply role-based filtering
@@ -687,12 +693,12 @@ export const fetchChecklistDataByDateRangeApi = async (
     // Apply date range filter ONLY
     if (startDate && endDate) {
       query = query
-        .gte('task_start_date', `${startDate}T00:00:00`)
-        .lte('task_start_date', `${endDate}T23:59:59`);
+        .gte('task_start_date', `${startDate} 00:00:00`)
+        .lte('task_start_date', `${endDate} 23:59:59`);
     } else if (startDate) {
-      query = query.gte('task_start_date', `${startDate}T00:00:00`);
+      query = query.gte('task_start_date', `${startDate} 00:00:00`);
     } else if (endDate) {
-      query = query.lte('task_start_date', `${endDate}T23:59:59`);
+      query = query.lte('task_start_date', `${endDate} 23:59:59`);
     }
 
     // Apply role-based filtering
@@ -718,13 +724,13 @@ export const fetchChecklistDataByDateRangeApi = async (
       case 'pending':
         const today = new Date().toISOString().split('T')[0];
         query = query.or('status.is.null,status.neq.yes')
-          .gte('task_start_date', `${today}T00:00:00`);
+          .gte('task_start_date', `${today} 00:00:00`);
         break;
       case 'overdue':
         const todayOverdue = new Date().toISOString().split('T')[0];
         query = query.or('status.is.null,status.neq.yes')
           .is('submission_date', null)
-          .lt('task_start_date', `${todayOverdue}T00:00:00`);
+          .lt('task_start_date', `${todayOverdue} 00:00:00`);
         break;
       // 'all' - no additional status filter
     }
@@ -763,12 +769,12 @@ export const getChecklistDateRangeCountApi = async (
     // Apply date range filter ONLY - no today date restrictions
     if (startDate && endDate) {
       query = query
-        .gte('task_start_date', `${startDate}T00:00:00`)
-        .lte('task_start_date', `${endDate}T23:59:59`);
+        .gte('task_start_date', `${startDate} 00:00:00`)
+        .lte('task_start_date', `${endDate} 23:59:59`);
     } else if (startDate) {
-      query = query.gte('task_start_date', `${startDate}T00:00:00`);
+      query = query.gte('task_start_date', `${startDate} 00:00:00`);
     } else if (endDate) {
-      query = query.lte('task_start_date', `${endDate}T23:59:59`);
+      query = query.lte('task_start_date', `${endDate} 23:59:59`);
     }
 
     // Apply role-based filtering
@@ -794,13 +800,13 @@ export const getChecklistDateRangeCountApi = async (
       case 'pending':
         const today = new Date().toISOString().split('T')[0];
         query = query.or('status.is.null,status.neq.yes')
-          .gte('task_start_date', `${today}T00:00:00`);
+          .gte('task_start_date', `${today} 00:00:00`);
         break;
       case 'overdue':
         const todayOverdue = new Date().toISOString().split('T')[0];
         query = query.or('status.is.null,status.neq.yes')
           .is('submission_date', null)
-          .lt('task_start_date', `${todayOverdue}T00:00:00`);
+          .lt('task_start_date', `${todayOverdue} 00:00:00`);
         break;
       // 'all' - no additional status filter
     }
@@ -821,7 +827,8 @@ export const getChecklistDateRangeCountApi = async (
   }
 };
 
-export const getChecklistDateRangeStatsApi = async (
+export const getDashboardDateRangeStatsApi = async (
+  dashboardType,
   startDate,
   endDate,
   staffFilter = null,
@@ -831,20 +838,19 @@ export const getChecklistDateRangeStatsApi = async (
     const role = localStorage.getItem('role');
     const username = localStorage.getItem('user-name');
 
-    console.log('📊 getChecklistDateRangeStatsApi called with:', {
-      startDate, endDate, staffFilter, departmentFilter
+    console.log('📊 getDashboardDateRangeStatsApi called with:', {
+      dashboardType, startDate, endDate, staffFilter, departmentFilter
     });
 
-    // MAIN FIX: Remove the today date filter that was limiting results
     let totalQuery = supabase
-      .from('checklist')
+      .from(dashboardType)
       .select('*', { count: 'exact', head: true });
 
     // Apply ONLY date range filter - no other date restrictions
     if (startDate && endDate) {
       totalQuery = totalQuery
-        .gte('task_start_date', `${startDate}T00:00:00`)
-        .lte('task_start_date', `${endDate}T23:59:59`);
+        .gte('task_start_date', `${startDate} 00:00:00`)
+        .lte('task_start_date', `${endDate} 23:59:59`);
     }
 
     // Apply role-based filtering
@@ -873,15 +879,20 @@ export const getChecklistDateRangeStatsApi = async (
 
     // Get completed tasks count
     let completedQuery = supabase
-      .from('checklist')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'yes');
+      .from(dashboardType)
+      .select('*', { count: 'exact', head: true });
+
+    if (dashboardType === 'checklist') {
+      completedQuery = completedQuery.eq('status', 'yes');
+    } else {
+      completedQuery = completedQuery.not('submission_date', 'is', null);
+    }
 
     // Apply the same date range and filters
     if (startDate && endDate) {
       completedQuery = completedQuery
-        .gte('task_start_date', `${startDate}T00:00:00`)
-        .lte('task_start_date', `${endDate}T23:59:59`);
+        .gte('task_start_date', `${startDate} 00:00:00`)
+        .lte('task_start_date', `${endDate} 23:59:59`);
     }
     if (role === 'user' && username) {
       completedQuery = completedQuery.eq('name', username);
@@ -908,17 +919,22 @@ export const getChecklistDateRangeStatsApi = async (
     // Get overdue tasks count (tasks before today that are not completed)
     const today = new Date().toISOString().split('T')[0];
     let overdueQuery = supabase
-      .from('checklist')
-      .select('*', { count: 'exact', head: true })
-      .or('status.is.null,status.neq.yes') // Not completed
-      .is('submission_date', null) // Not submitted
-      .lt('task_start_date', `${today}T00:00:00`); // Before today
+      .from(dashboardType)
+      .select('*', { count: 'exact', head: true });
+
+    if (dashboardType === 'checklist') {
+      overdueQuery = overdueQuery.or('status.is.null,status.neq.yes');
+    } else {
+      overdueQuery = overdueQuery.is('submission_date', null);
+    }
+
+    overdueQuery = overdueQuery.lt('task_start_date', `${today} 00:00:00`); // Before today
 
     // Apply the same date range and filters
     if (startDate && endDate) {
       overdueQuery = overdueQuery
-        .gte('task_start_date', `${startDate}T00:00:00`)
-        .lte('task_start_date', `${endDate}T23:59:59`);
+        .gte('task_start_date', `${startDate} 00:00:00`)
+        .lte('task_start_date', `${endDate} 23:59:59`);
     }
     if (role === 'user' && username) {
       overdueQuery = overdueQuery.eq('name', username);
@@ -1049,9 +1065,9 @@ const getCurrentMonthRange = () => {
   const today = new Date();
 
   return {
-    start: firstDayOfMonth.toISOString().split('T')[0] + 'T00:00:00',
-    end: today.toISOString().split('T')[0] + 'T23:59:59',
-    todayStart: today.toISOString().split('T')[0] + 'T00:00:00'
+    start: firstDayOfMonth.toISOString().split('T')[0] + ' 00:00:00',
+    end: today.toISOString().split('T')[0] + ' 23:59:59',
+    todayStart: today.toISOString().split('T')[0] + ' 00:00:00'
   };
 };
 
@@ -1066,7 +1082,6 @@ export const countTotalTaskApi = async (dashboardType, staffFilter = null, depar
     let query = supabase
       .from(dashboardType)
       .select('*', { count: 'exact', head: true })
-      .gte('task_start_date', start)
       .lte('task_start_date', end);
 
     // Apply filters
@@ -1110,14 +1125,12 @@ export const countCompleteTaskApi = async (dashboardType, staffFilter = null, de
         .from('delegation')
         .select('*', { count: 'exact', head: true })
         .not('submission_date', 'is', null)
-        .gte('task_start_date', start)
         .lte('task_start_date', end);
     } else {
       query = supabase
         .from('checklist')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'yes')
-        .gte('task_start_date', start)
         .lte('task_start_date', end);
     }
 
@@ -1162,16 +1175,14 @@ export const countOverDueORExtendedTaskApi = async (dashboardType, staffFilter =
         .from('delegation')
         .select('*', { count: 'exact', head: true })
         .is('submission_date', null)
-        .lt('task_start_date', todayStart)  // Overdue: started before today
-        .gte('task_start_date', start);     // Current month: from 1st of month
+        .lt('task_start_date', todayStart);  // Overdue: started before today
     } else {
       query = supabase
         .from('checklist')
         .select('*', { count: 'exact', head: true })
         .or('status.is.null,status.neq.yes')
         .is('submission_date', null)
-        .lt('task_start_date', todayStart)  // Overdue: started before today
-        .gte('task_start_date', start);     // Current month: from 1st of month
+        .lt('task_start_date', todayStart);  // Overdue: started before today
     }
 
     // Apply filters

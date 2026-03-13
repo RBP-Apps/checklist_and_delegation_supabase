@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { getTotalUsersCountApi } from "../../../redux/api/dashboardApi"
+import { formatDisplayDate } from "../../../utils/dateUtils"
 
 export default function DashboardHeader({
   dashboardType,
@@ -88,7 +89,7 @@ export default function DashboardHeader({
                 onClick={() => setShowDateRangePicker(!showDateRangePicker)}
                 className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 text-sm text-left bg-white"
               >
-                {startDate && endDate ? `${startDate} to ${endDate}` : "Date Range"}
+                {startDate && endDate ? `${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}` : "Date Range"}
               </button>
 
               {showDateRangePicker && (
@@ -196,7 +197,7 @@ export default function DashboardHeader({
               onClick={() => setShowDateRangePicker(!showDateRangePicker)}
               className="w-[140px] sm:w-[180px] rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 text-left bg-white hover:bg-gray-50"
             >
-              {startDate && endDate ? `${startDate} to ${endDate}` : "Date Range"}
+              {startDate && endDate ? `${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}` : "Date Range"}
             </button>
 
             {showDateRangePicker && (

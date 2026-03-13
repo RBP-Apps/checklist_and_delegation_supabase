@@ -238,13 +238,13 @@ function Approval() {
                     {getFilteredMembersList().length > 0 && userRole === "admin" && (
                       <div className="flex-1 min-w-[250px]">
                         <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-                          <Users className="h-3 w-3" /> Filter by Member
+                          <Users className="h-3 w-3" /> Filter by Member Name
                         </label>
                         <div className="relative">
                           <div className="relative group">
                             <input
                               type="text"
-                              placeholder="Search members..."
+                              placeholder="Search member name..."
                               value={memberSearchTerm}
                               onChange={(e) =>
                                 setMemberSearchTerm(e.target.value)
@@ -261,7 +261,7 @@ function Approval() {
                           {showMemberDropdown && (
                             <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto ring-1 ring-black/5">
                               <div className="p-2 border-b border-gray-50 sticky top-0 bg-white/95 backdrop-blur-sm z-10 flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase">Select Members</span>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase">Select Member Names</span>
                                 <button
                                   onClick={() => setShowMemberDropdown(false)}
                                   className="p-1 hover:bg-gray-100 rounded-md text-gray-400"
@@ -522,6 +522,10 @@ function Approval() {
                           Sub Category
                         </th>
 
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
+                          Member Name
+                        </th>
+
                         <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
                           Task Description
                         </th>
@@ -559,7 +563,7 @@ function Approval() {
                               (userRole === "admin" ? 2 : 0) + // Admin Done + Admin checkbox columns
                               (userRole !== "admin" ? 1 : 0) + // Task ID column
                               (userRole !== "admin" && isAdmin ? 3 : 0) + // Department, Given By, Name columns
-                              7 + // Fixed columns (Task Description, End Date, frequency, Require Attachment, Actual Date, Status, Remarks, Attachment)
+                              8 + // Fixed columns (Sub Category, Member Name, Task Description, End Date, frequency, Require Attachment, Actual Date, Status, Remarks, Attachment)
                               (userRole !== "admin" && isAdmin ? 1 : 0) // Enable Reminders column
                             }
                             className="px-6 py-8 text-center"
@@ -697,6 +701,12 @@ function Approval() {
                                 </div>
                               </td>
 
+                              <td className="px-3 py-4 min-w-[150px]">
+                                <div className="text-sm text-gray-900 break-words">
+                                  {history.name || "—"}
+                                </div>
+                              </td>
+
                               <td className="px-3 py-4 min-w-[200px]">
                                 <div className="text-sm text-gray-900 break-words" title={history.task_description}>
                                   {history.task_description || "—"}
@@ -777,7 +787,7 @@ function Approval() {
                               (userRole === "admin" ? 2 : 0) + // Admin Done + Admin checkbox columns
                               1 + // Task ID column (now visible for all)
                               (isAdmin ? 3 : 0) + // Name, Department, Given By columns
-                              7 + // Fixed columns (Task Description, Planned Date, Actual Date, Status, frequency, Require Attachment, Remarks)
+                              8 + // Fixed columns (Sub Category, Member Name, Task Description, Planned Date, Actual Date, Status, frequency, Require Attachment, Remarks)
                               (isAdmin ? 1 : 0) // Enable Reminders column
                             }
                             className="px-6 py-4 text-center text-gray-500"
@@ -883,6 +893,11 @@ function Approval() {
                             <div>
                               <span className="font-medium text-gray-700">Sub Category:</span>
                               <p className="mt-1 text-gray-900">{history.department || "—"}</p>
+                            </div>
+
+                            <div>
+                              <span className="font-medium text-gray-700">Member Name:</span>
+                              <p className="mt-1 text-gray-900">{history.name || "—"}</p>
                             </div>
 
                             <div>
