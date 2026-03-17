@@ -9,7 +9,9 @@ export default function StatisticsCards({
   dateRange = null // Add dateRange prop to show filter info
 }) {
   const completionRate = totalTask > 0 ? (completeTask / totalTask) * 100 : 0;
-  const notDoneTask = totalTask - completeTask;
+  // notDoneTask excludes pending and overdue (which are already counted separately)
+  // so all four categories are mutually exclusive and sum to 100%
+  const notDoneTask = Math.max(0, totalTask - completeTask - pendingTask - overdueTask);
 
   // Calculate all percentages
   const pendingRate = totalTask > 0 ? (pendingTask / totalTask) * 100 : 0;
@@ -17,11 +19,18 @@ export default function StatisticsCards({
   const overdueRate = totalTask > 0 ? (overdueTask / totalTask) * 100 : 0;
 
   // Calculate stroke dash arrays for each segment
-  const circumference = 251.3; // 2 * π * 40
-  const completedDash = completionRate * circumference / 100;
-  const pendingDash = pendingRate * circumference / 100;
-  const notDoneDash = notDoneRate * circumference / 100;
-  const overdueDash = overdueRate * circumference / 100;
+  const circumference = 2 * Math.PI * 40; // ≈ 251.33
+  const completedDash = (completionRate / 100) * circumference;
+  const pendingDash = (pendingRate / 100) * circumference;
+  const notDoneDash = (notDoneRate / 100) * circumference;
+  const overdueDash = (overdueRate / 100) * circumference;
+
+  // Cumulative offsets so each segment starts where the previous ended
+  // strokeDashoffset = circumference - cumulativeStart (positive value)
+  const completedOffset = 0;
+  const pendingOffset = completedDash;
+  const notDoneOffset = completedDash + pendingDash;
+  const overdueOffset = completedDash + pendingDash + notDoneDash;
 
   // Format date for display
   const formatDate = (dateString) => {
@@ -176,28 +185,16 @@ export default function StatisticsCards({
                     strokeWidth="8"
                     fill="none"
                   />
-                  {/* Overdue segment - red */}
+                  {/* Completed segment - green */}
                   <circle
                     cx="50"
                     cy="50"
                     r="40"
-                    stroke="#ef4444"
+                    stroke="#10b981"
                     strokeWidth="8"
                     fill="none"
-                    strokeLinecap="line"
-                    strokeDasharray={`${overdueDash} ${circumference}`}
-                  />
-                  {/* Not Done segment - gray */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="40"
-                    stroke="#6b7280"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeLinecap="line"
-                    strokeDasharray={`${notDoneDash} ${circumference}`}
-                    strokeDashoffset={-overdueDash}
+                    strokeDasharray={`${completedDash} ${circumference - completedDash}`}
+                    strokeDashoffset={circumference - completedOffset}
                   />
                   {/* Pending segment - amber/yellow */}
                   <circle
@@ -207,21 +204,30 @@ export default function StatisticsCards({
                     stroke="#f59e0b"
                     strokeWidth="8"
                     fill="none"
-                    strokeLinecap="line"
-                    strokeDasharray={`${pendingDash} ${circumference}`}
-                    strokeDashoffset={-(overdueDash + notDoneDash)}
+                    strokeDasharray={`${pendingDash} ${circumference - pendingDash}`}
+                    strokeDashoffset={circumference - pendingOffset}
                   />
-                  {/* Completed segment - green */}
+                  {/* Not Done segment - gray */}
                   <circle
                     cx="50"
                     cy="50"
                     r="40"
-                    stroke="#10b981"
+                    stroke="#6b7280"
                     strokeWidth="8"
                     fill="none"
-                    strokeLinecap="line"
-                    strokeDasharray={`${completedDash} ${circumference}`}
-                    strokeDashoffset={-(overdueDash + notDoneDash + pendingDash)}
+                    strokeDasharray={`${notDoneDash} ${circumference - notDoneDash}`}
+                    strokeDashoffset={circumference - notDoneOffset}
+                  />
+                  {/* Overdue segment - red */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    stroke="#ef4444"
+                    strokeWidth="8"
+                    fill="none"
+                    strokeDasharray={`${overdueDash} ${circumference - overdueDash}`}
+                    strokeDashoffset={circumference - overdueOffset}
                   />
                 </svg>
                 {/* Percentage text in center */}

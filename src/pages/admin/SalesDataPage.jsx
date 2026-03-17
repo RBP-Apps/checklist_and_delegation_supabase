@@ -399,9 +399,16 @@ function AccountDataPage() {
       );
     }
 
+    // NEW: Apply member filter
+    if (selectedMembers.length > 0) {
+      filtered = filtered.filter((account) =>
+        selectedMembers.includes(account.name)
+      );
+    }
+
     return filtered;
 
-  }, [checklist, searchTerm]);
+  }, [checklist, searchTerm, selectedMembers]);
 
   const filteredHistoryData = useMemo(() => {
     if (!Array.isArray(history)) return []
@@ -495,10 +502,20 @@ function AccountDataPage() {
   }
 
   const getFilteredMembersList = () => {
+    // Get unique names from both checklist (pending tasks) and history
+    const checklistNames = Array.isArray(checklist) ? checklist.map(item => item.name) : [];
+    const historyNames = Array.isArray(history) ? history.map(item => item.name) : [];
+    
+    // Combine and get unique values, filtering out null/undefined/empty
+    const activeNames = [...new Set([...checklistNames, ...historyNames])]
+      .filter(name => name && name.trim() !== "");
+
     if (userRole === "admin") {
-      return doerName
+      return activeNames.sort((a, b) => a.localeCompare(b));
     } else {
-      return doerName.filter((member) => member.toLowerCase() === username.toLowerCase())
+      return activeNames
+        .filter((member) => member.toLowerCase() === username.toLowerCase())
+        .sort((a, b) => a.localeCompare(b));
     }
   }
 
@@ -834,21 +851,50 @@ function AccountDataPage() {
               />
             </div>
             {!showHistory && (
-              <div className="relative w-full sm:w-48">
-                <select
-                  value={statusLabelFilter}
-                  onChange={(e) => setStatusLabelFilter(e.target.value)}
-                  className="w-full appearance-none bg-white border border-purple-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
-                >
-                  <option value="all">All Labels</option>
-                  <option value="today">Today</option>
-                  <option value="upcoming">Upcoming</option>
-                  <option value="overdue">Overdue</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-500">
-                  <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                  </svg>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="relative w-full sm:w-48">
+                  <select
+                    value={statusLabelFilter}
+                    onChange={(e) => setStatusLabelFilter(e.target.value)}
+                    className="w-full appearance-none bg-white border border-purple-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
+                  >
+                    <option value="all">All Labels</option>
+                    <option value="today">Today</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="overdue">Overdue</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-500">
+                    <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </div>
+                </div>
+
+                <div className="relative w-full sm:w-48">
+                  <select
+                    value={selectedMembers.length > 0 ? selectedMembers[0] : ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val) {
+                        setSelectedMembers([val]);
+                      } else {
+                        setSelectedMembers([]);
+                      }
+                    }}
+                    className="w-full appearance-none bg-white border border-purple-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
+                  >
+                    <option value="">All Names</option>
+                    {getFilteredMembersList().map((member, idx) => (
+                      <option key={idx} value={member}>
+                        {member}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-500">
+                    <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             )}
@@ -931,7 +977,7 @@ function AccountDataPage() {
             </p>
           </div>
 
-          {loading && currentPage === 1 ? (
+          {loading && (showHistory ? currentPageHistory === 1 : currentPage === 1) ? (
             // Full table loading for initial load
             <div className="text-center py-10">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-purple-500 mb-4"></div>
