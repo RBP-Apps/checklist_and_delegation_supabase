@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import supabase from '../SupabaseClient';
 import useApprovalStore from '../store/useApprovalStore';
+import { useDispatch } from 'react-redux';
+import { checklistHistoryData } from '../redux/slice/checklistSlice';
+import { fetchChechListDataForHistory } from '../redux/api/checkListApi';
 
 export const useApprovalData = () => {
     // Access state and setters from store
@@ -17,6 +20,7 @@ export const useApprovalData = () => {
         selectedHistoryItems,
         markingAsDone,
         setLoading,
+        setIsLoadingMore,
         setError,
         setSuccessMessage,
         setHistoryData,
@@ -27,8 +31,26 @@ export const useApprovalData = () => {
         setSavingEdits,
         setSelectedHistoryItems,
         setMarkingAsDone,
-        setConfirmationModal
+        setConfirmationModal,
+        checklistPage,
+        setChecklistPage,
+        hasMoreChecklist,
+        setHasMoreChecklist,
+        delegationPage,
+        setDelegationPage,
+        hasMoreDelegation,
+        setHasMoreDelegation,
+        totalChecklistCount,
+        setTotalChecklistCount,
+        totalDelegationCount,
+        setTotalDelegationCount,
+        totalAdminDoneChecklist,
+        setTotalAdminDoneChecklist,
+        totalAdminDoneDelegation,
+        setTotalAdminDoneDelegation
     } = useApprovalStore();
+
+    const dispatch = useDispatch();
 
     const userRole = localStorage.getItem("role");
     const username = localStorage.getItem("user-name");
@@ -77,45 +99,58 @@ export const useApprovalData = () => {
             const currentUsername = localStorage.getItem("user-name");
             const currentUserRole = localStorage.getItem("role");
 
-            // Fetch Checklist data
-            let checklistQuery = supabase
+            // Fetch Checklist data - INITIAL PAGE + COUNT
+            const itemsPerPage = 50;
+            const { data: checklistData, error: checklistError, count: checklistCount } = await supabase
                 .from('checklist')
-                .select('*')
+                .select('*', { count: 'exact' })
                 .not('submission_date', 'is', null)
-                .not('status', 'is', null);
-
-            if (currentUserRole === 'user' && currentUsername) {
-                checklistQuery = checklistQuery.eq('name', currentUsername);
-            }
-
-            const { data: checklistData, error: checklistError } = await checklistQuery;
+                .not('status', 'is', null)
+                .order('task_start_date', { ascending: false })
+                .range(0, itemsPerPage - 1);
 
             if (checklistError) throw new Error(`Failed to fetch checklist data: ${checklistError.message}`);
 
-            // Fetch Delegation data
-            let delegationQuery = supabase
-                .from('delegation')
-                .select('*')
+            // Fetch Playlist of all users for the dropdown filter from Supabase
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('user_name')
+                .order('user_name', { ascending: true });
+
+            let finalMembersList = [];
+            if (!userError && userData) {
+                finalMembersList = [...new Set(userData.map(u => u.user_name))].filter(Boolean);
+            }
+
+            // Fetch Checklist ADMIN DONE COUNT (Grand total from DB)
+            const { count: adminDoneChecklistCount } = await supabase
+                .from('checklist')
+                .select('task_id', { count: 'exact', head: true })
                 .not('submission_date', 'is', null)
-                .not('status', 'is', null);
+                .not('status', 'is', null)
+                .ilike('admin_done', 'Done');
 
-            if (currentUserRole === 'user' && currentUsername) {
-                delegationQuery = delegationQuery.eq('name', currentUsername);
-            }
+            // Fetch Delegation data - INITIAL PAGE + COUNT
+            const { data: delegationData, error: delegationError, count: delegationCount } = await supabase
+                .from('delegation')
+                .select('*', { count: 'exact' })
+                .not('submission_date', 'is', null)
+                .not('status', 'is', null)
+                .order('task_start_date', { ascending: false })
+                .range(0, itemsPerPage - 1);
+                
+            // Fetch Delegation ADMIN DONE COUNT (Grand total from DB)
+            const { count: adminDoneDelegationCount } = await supabase
+                .from('delegation')
+                .select('task_id', { count: 'exact', head: true })
+                .not('submission_date', 'is', null)
+                .not('status', 'is', null)
+                .ilike('admin_done', 'Done');
 
-            let { data: delegationData, error: delegationError } = await delegationQuery;
-
-            if (delegationError) {
-                console.warn(`Failed to fetch delegation data: ${delegationError.message}`);
-                delegationData = [];
-            }
-
-            const membersSet = new Set();
 
             // Process Checklist data
             const processedChecklistData = checklistData.map((row, index) => {
                 const assignedTo = row.name || "Unassigned";
-                membersSet.add(assignedTo);
 
                 const taskId = row.task_id || "";
                 const stableId = taskId
@@ -148,7 +183,6 @@ export const useApprovalData = () => {
             // Process Delegation data
             const processedDelegationData = delegationData.map((row, index) => {
                 const assignedTo = row.name || "Unassigned";
-                membersSet.add(assignedTo);
 
                 const taskId = row.task_id || "";
                 const stableId = taskId
@@ -178,16 +212,101 @@ export const useApprovalData = () => {
                 };
             });
 
-            setMembersList(Array.from(membersSet).sort());
+            setMembersList(finalMembersList);
             setHistoryData(processedChecklistData);
             setDelegationHistoryData(processedDelegationData);
+            
+            // Set pagination states for page 1
+            setChecklistPage(1);
+            setDelegationPage(1);
+            setHasMoreChecklist(processedChecklistData.length === 50);
+            setHasMoreDelegation(processedDelegationData.length === 50);
+            
+            // Set grand totals
+            setTotalChecklistCount(checklistCount || 0);
+            setTotalDelegationCount(delegationCount || 0);
+            setTotalAdminDoneChecklist(adminDoneChecklistCount || 0);
+            setTotalAdminDoneDelegation(adminDoneDelegationCount || 0);
+            
             setLoading(false);
         } catch (error) {
             console.error("Error fetching sheet data:", error);
             setError("Failed to load account data: " + error.message);
             setLoading(false);
         }
-    }, [setError, setHistoryData, setDelegationHistoryData, setMembersList, setLoading]);
+    }, [setError, setHistoryData, setDelegationHistoryData, setMembersList, setLoading, setChecklistPage, setDelegationPage, setHasMoreChecklist, setHasMoreDelegation]);
+
+    // NEW: Fetch more data handler for pagination
+    const fetchMoreData = useCallback(async () => {
+      try {
+        if (activeApprovalTab === 'checklist') {
+          if (!hasMoreChecklist) return;
+          setIsLoadingMore(true);
+          const nextPage = checklistPage + 1;
+          
+          // Use the API directly or dispatch Redux if preferred, but for now we follow Approval store flow
+          const data = await fetchChechListDataForHistory(nextPage);
+          
+          if (data && data.length > 0) {
+            const processed = data.map((row, index) => {
+              const taskId = row.task_id || "";
+              return {
+                _id: `checklist_task_${taskId}_${nextPage}_${index}`,
+                _sheetType: 'checklist',
+                ...row,
+                task_start_date: parseDateTime(row.task_start_date),
+                submission_date: parseDateTime(row.submission_date),
+              };
+            });
+            
+            setHistoryData(prev => [...prev, ...processed]);
+            setChecklistPage(nextPage);
+            setHasMoreChecklist(data.length === 50);
+          } else {
+            setHasMoreChecklist(false);
+          }
+        } else {
+          if (!hasMoreDelegation) return;
+          setIsLoadingMore(true);
+          const nextPage = delegationPage + 1;
+          
+          const itemsPerPage = 50;
+          const start = (nextPage - 1) * itemsPerPage;
+          const { data, error } = await supabase
+            .from('delegation')
+            .select('*')
+            .not('submission_date', 'is', null)
+            .not('status', 'is', null)
+            .order('task_start_date', { ascending: false })
+            .range(start, start + itemsPerPage - 1);
+            
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            const processed = data.map((row, index) => {
+              const taskId = row.task_id || "";
+              return {
+                _id: `delegation_task_${taskId}_${nextPage}_${index}`,
+                _sheetType: 'delegation',
+                ...row,
+                task_start_date: parseDateTime(row.task_start_date),
+                submission_date: parseDateTime(row.submission_date),
+              };
+            });
+            
+            setDelegationHistoryData(prev => [...prev, ...processed]);
+            setDelegationPage(nextPage);
+            setHasMoreDelegation(data.length === 50);
+          } else {
+            setHasMoreDelegation(false);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading more data:", err);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    }, [activeApprovalTab, checklistPage, hasMoreChecklist, delegationPage, hasMoreDelegation, setHistoryData, setDelegationHistoryData, setChecklistPage, setDelegationPage, setHasMoreChecklist, setHasMoreDelegation, setIsLoadingMore]);
 
     // Initial Fetch
     useEffect(() => {
@@ -394,7 +513,7 @@ export const useApprovalData = () => {
         userRole,
 
         // Actions
-        fetchSheetData,
+        fetchMoreData,
         handleEditClick,
         handleCancelEdit,
         handleSaveEdit,

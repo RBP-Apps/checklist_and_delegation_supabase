@@ -111,7 +111,14 @@ function Approval() {
     markingAsDone,
     resetFilters,
     historyData,
-    delegationHistoryData
+    delegationHistoryData,
+    hasMoreChecklist,
+    hasMoreDelegation,
+    isLoadingMore,
+    totalChecklistCount,
+    totalDelegationCount,
+    totalAdminDoneChecklist,
+    totalAdminDoneDelegation
   } = useApprovalStore();
 
   const {
@@ -123,8 +130,31 @@ function Approval() {
     handleCancelEdit,
     handleSaveEdit,
     handleMarkMultipleDone,
-    confirmMarkDone
+    confirmMarkDone,
+    fetchMoreData
   } = useApprovalData();
+
+  const historyTableContainerRef = React.useRef(null);
+
+  const handleScrollHistory = React.useCallback(() => {
+    if (!historyTableContainerRef.current || isLoadingMore) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = historyTableContainerRef.current;
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      if ((activeApprovalTab === 'checklist' && hasMoreChecklist) || 
+          (activeApprovalTab === 'delegation' && hasMoreDelegation)) {
+        fetchMoreData();
+      }
+    }
+  }, [isLoadingMore, activeApprovalTab, hasMoreChecklist, hasMoreDelegation, fetchMoreData]);
+
+  React.useEffect(() => {
+    const tableElement = historyTableContainerRef.current;
+    if (tableElement) {
+      tableElement.addEventListener('scroll', handleScrollHistory);
+      return () => tableElement.removeEventListener('scroll', handleScrollHistory);
+    }
+  }, [handleScrollHistory]);
 
   const isAdmin = userRole === "admin";
   const currentData = activeApprovalTab === 'checklist' ? filteredHistoryData : filteredDelegationHistoryData;
@@ -137,26 +167,39 @@ function Approval() {
     const isDone = (task) => task.status && task.status.toString().toLowerCase() === 'yes';
 
     // Total should be all "Yes" tasks in the current tab (unfiltered by user selection, only pre-fetched from DB)
-    const totalCompleted = sourceData.filter(isDone).length;
+    // Grand Total from DB for current tab
+    const totalCompleted = activeApprovalTab === 'checklist' ? totalChecklistCount : totalDelegationCount;
+
+    // Admin Done Overall Count
+    const adminDoneCount = activeApprovalTab === 'checklist' ? totalAdminDoneChecklist : totalAdminDoneDelegation;
 
     // Filtered total should be "Yes" tasks matching CURRENT filters
     const filteredTotal = currentData.filter(isDone).length;
+    const filteredAdminDone = currentData.filter(task => task.admin_done === "Done").length;
 
     const memberStats = selectedMembers.length > 0
       ? selectedMembers.reduce((stats, member) => {
         const memberTasks = currentData.filter(
           (task) => task.name === member && isDone(task)
         ).length;
+        const memberAdminDone = currentData.filter(
+          (task) => task.name === member && task.admin_done === "Done"
+        ).length;
         return {
           ...stats,
-          [member]: memberTasks,
+          [member]: {
+            done: memberTasks,
+            adminDone: memberAdminDone
+          },
         };
       }, {})
       : {};
 
     return {
       totalCompleted,
+      adminDoneCount,
       filteredTotal,
+      filteredAdminDone,
       memberStats
     }
   };
@@ -392,6 +435,32 @@ function Approval() {
                         </div>
                       </div>
 
+                      {/* NEW: Admin Done Card */}
+                      <div className="flex items-center gap-2 bg-green-50/50 p-1.5 rounded-lg border border-green-100/50">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-green-500 uppercase leading-none mb-1">
+                            Admin Done
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-lg font-black text-green-700 leading-none">
+                                {getTaskStatistics().adminDoneCount}
+                              </span>
+                              <span className="text-[10px] font-bold text-green-500 uppercase tracking-tighter">Tasks</span>
+                            </div>
+
+                            {(selectedMembers.length > 0 || startDate || endDate || searchTerm) && (
+                              <div className="flex items-center gap-1.5 pl-2 ml-2 border-l border-green-200">
+                                <span className="text-[10px] font-bold text-emerald-400 uppercase leading-none">Filtered</span>
+                                <span className="text-lg font-black text-emerald-700 leading-none">
+                                  {getTaskStatistics().filteredAdminDone}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
                       {/* Member Statistics - Small Pills */}
                       <div className="flex flex-wrap gap-2 max-w-[400px]">
                         {selectedMembers.slice(0, 3).map((member) => (
@@ -400,9 +469,14 @@ function Approval() {
                             className="px-2 py-1 bg-white rounded-md border border-purple-100 shadow-sm flex items-center gap-2"
                           >
                             <span className="text-[10px] font-bold text-gray-400 uppercase truncate max-w-[60px]">{member}</span>
-                            <span className="text-xs font-black text-purple-600">
-                              {getTaskStatistics().memberStats[member]}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="text-xs font-black text-purple-600 leading-none">
+                                {getTaskStatistics().memberStats[member]?.done || 0}
+                              </span>
+                              <span className="text-[8px] font-bold text-green-500 uppercase leading-none mt-0.5">
+                                {getTaskStatistics().memberStats[member]?.adminDone || 0} AD
+                              </span>
+                            </div>
                           </div>
                         ))}
                         {selectedMembers.length > 3 && (
@@ -475,7 +549,7 @@ function Approval() {
                 )}
 
                 {/* History Table - Based on Active Tab */}
-                <div className="hidden sm:block h-[calc(100vh-300px)] overflow-auto">
+                <div ref={historyTableContainerRef} className="hidden sm:block h-[calc(100vh-320px)] overflow-auto scroll-smooth">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
@@ -814,6 +888,22 @@ function Approval() {
                       )}
                     </tbody>
                   </table>
+
+                  {/* Pagination Identifiers - Load more UI */}
+                  {isLoadingMore && (
+                    <div className="flex justify-center items-center py-4 bg-gray-50/50 border-t border-gray-100">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-500 border-t-transparent mr-2"></div>
+                      <span className="text-purple-600 text-xs font-bold uppercase tracking-widest">Loading more tasks...</span>
+                    </div>
+                  )}
+
+                  {!isLoadingMore && 
+                   ((activeApprovalTab === 'checklist' && !hasMoreChecklist && historyData.length > 0) || 
+                    (activeApprovalTab === 'delegation' && !hasMoreDelegation && delegationHistoryData.length > 0)) && (
+                    <div className="text-center py-4 text-gray-400 text-[10px] font-bold uppercase tracking-widest bg-gray-50/30">
+                      No more tasks to load
+                    </div>
+                  )}
                 </div>
 
                 {/* Mobile Card View */}
