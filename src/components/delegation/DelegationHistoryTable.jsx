@@ -3,7 +3,7 @@ import useDelegationUIStore from '../../stores/useDelegationUIStore';
 import { formatDateTimeForDisplay } from '../../utils/dateParsing';
 
 const DelegationHistoryTable = ({ historyTasks, userRole, loading, error, resetFilters }) => {
-    const { startDate, endDate, setStartDate, setEndDate, setDateFilter, searchTerm } = useDelegationUIStore();
+    const { startDate, endDate, setStartDate, setEndDate, setDateFilter, searchTerm, nameFilter, setNameFilter, givenByFilter, setGivenByFilter } = useDelegationUIStore();
 
     return (
         <div className="rounded-lg border border-purple-200 shadow-md bg-white overflow-hidden">
@@ -42,12 +42,14 @@ const DelegationHistoryTable = ({ historyTasks, userRole, loading, error, resetF
                             </div>
                         </div>
                     </div>
-                    {(startDate || endDate || searchTerm) && (
+                    {(startDate || endDate || searchTerm || (nameFilter && nameFilter !== "All Names") || (givenByFilter && givenByFilter !== "All Given By")) && (
                         <button
                             onClick={() => {
                                 setStartDate("");
                                 setEndDate("");
-                                setDateFilter("all"); // from hook logic
+                                setDateFilter("all");
+                                setNameFilter("All Names");
+                                setGivenByFilter("All Given By");
                             }}
                             className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-xs sm:text-sm w-full sm:w-auto"
                         >

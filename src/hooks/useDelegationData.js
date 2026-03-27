@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { delegationData, delegation_DoneData } from '../redux/slice/delegationSlice';
 import useDelegationUIStore from '../stores/useDelegationUIStore';
+import supabase from '../SupabaseClient';
 
 // Simple debounce hook (moved from file)
 function useDebounce(value, delay) {
@@ -22,8 +23,10 @@ export const useDelegationData = () => {
     // Local user details
     const [userRole, setUserRole] = useState("");
     const [username, setUsername] = useState("");
+    const [users, setUsers] = useState([]);
+    const [givenByList, setGivenByList] = useState([]);
 
-    const { searchTerm, dateFilter, startDate, endDate, statusData } = useDelegationUIStore();
+    const { searchTerm, dateFilter, nameFilter, givenByFilter, startDate, endDate, statusData } = useDelegationUIStore();
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
     useEffect(() => {
@@ -35,6 +38,34 @@ export const useDelegationData = () => {
         // Fetch Data
         dispatch(delegationData());
         dispatch(delegation_DoneData());
+
+        // Fetch Users for filter
+        const fetchUsers = async () => {
+            const { data, error } = await supabase
+                .from('users')
+                .select('user_name')
+                .order('user_name', { ascending: true });
+            if (data) {
+                // Remove duplicates if any and set users
+                const uniqueNames = [...new Set(data.map(u => u.user_name))].filter(Boolean);
+                setUsers(uniqueNames);
+            }
+        };
+
+        const fetchGivenBy = async () => {
+            const { data, error } = await supabase
+                .from('users')
+                .select('given_by')
+                .not('given_by', 'is', null) // filter out nulls
+                .order('given_by', { ascending: true });
+            if (data) {
+                const uniqueGivenBy = [...new Set(data.map(u => u.given_by))].filter(Boolean);
+                setGivenByList(uniqueGivenBy);
+            }
+        };
+
+        fetchUsers();
+        fetchGivenBy();
     }, [dispatch]);
 
     // Filter Active Tasks
@@ -95,18 +126,22 @@ export const useDelegationData = () => {
             return isWithinVisibleWindow || isOverduePending;
         });
 
-        // If I want to fix the bug where dateFilter was ignored, I can. 
-        // But strict refactor means preserving behavior.
-        // However, if the behavior was "dropdown does nothing", that's a bug.
-        // User asked to "Refactor", usually implies "Clean up", likely improving bugs is okay.
-        // I will stick to the hardcoded "Upcoming || OverduePending" logic as the BASE,
-        // and if `dateFilter` is used, I should probably apply it on top?
-        // Actually, let's just stick to the original "hardcoded logic" for safety, 
-        // unless I see `dateFilter` used elsewhere. 
-        // I don't see it used.
+        // Filter by user_name if nameFilter is set
+        if (nameFilter && nameFilter !== "All Names") {
+            filtered = filtered.filter((task) => 
+                task.name && task.name.toLowerCase() === nameFilter.toLowerCase()
+            );
+        }
+
+        // Filter by given_by if givenByFilter is set
+        if (givenByFilter && givenByFilter !== "All Given By") {
+            filtered = filtered.filter((task) => 
+                task.given_by && task.given_by.toLowerCase() === givenByFilter.toLowerCase()
+            );
+        }
 
         return filtered;
-    }, [delegation, debouncedSearchTerm, dateFilter, statusData]);
+    }, [delegation, debouncedSearchTerm, dateFilter, nameFilter, givenByFilter, statusData]);
 
     // Filter History Tasks
     const historyTasks = useMemo(() => {
@@ -121,25 +156,32 @@ export const useDelegationData = () => {
                     ? Object.values(item).some(value => value && value.toString().toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
                     : true;
 
-                let matchesDateRange = true;
+                // Range logic
+                let matchesRange = true;
                 if (startDate || endDate) {
                     const itemDate = item.created_at ? new Date(item.created_at) : null;
                     if (!itemDate || isNaN(itemDate.getTime())) return false;
 
                     if (startDate) {
                         const s = new Date(startDate); s.setHours(0, 0, 0, 0);
-                        if (itemDate < s) matchesDateRange = false;
+                        if (itemDate < s) matchesRange = false;
                     }
                     if (endDate) {
                         const e = new Date(endDate); e.setHours(23, 59, 59, 999);
-                        if (itemDate > e) matchesDateRange = false;
+                        if (itemDate > e) matchesRange = false;
                     }
                 }
 
-                return matchesSearch && matchesDateRange;
+                const matchesName = (nameFilter === "All Names") || 
+                                  (item.name && item.name.toLowerCase() === nameFilter.toLowerCase());
+
+                const matchesGivenBy = (givenByFilter === "All Given By") || 
+                                     (item.given_by && item.given_by.toLowerCase() === givenByFilter.toLowerCase());
+
+                return matchesSearch && matchesRange && matchesName && matchesGivenBy;
             })
             .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    }, [delegation_done, debouncedSearchTerm, startDate, endDate, userRole, username]);
+    }, [delegation_done, debouncedSearchTerm, startDate, endDate, userRole, username, nameFilter, givenByFilter]);
 
     const refreshData = () => {
         dispatch(delegationData());
@@ -153,6 +195,8 @@ export const useDelegationData = () => {
         historyTasks,
         userRole,
         username,
+        users,
+        givenByList,
         refreshData
     };
 };

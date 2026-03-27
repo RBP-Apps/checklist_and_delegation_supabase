@@ -8,6 +8,7 @@ import { postChecklistAdminDoneAPI } from "../../redux/api/checkListApi"
 import { uniqueDoerNameData } from "../../redux/slice/assignTaskSlice";
 import { useNavigate } from "react-router-dom"
 import Modal from "../../components/common/Modal"
+import supabase from "../../SupabaseClient"
 
 // Configuration object - Move all configurations here
 const CONFIG = {
@@ -45,6 +46,7 @@ function AccountDataPage() {
   const [initialHistoryLoading, setInitialHistoryLoading] = useState(false)
   const [isMobile, setIsMobile] = useState(false);
   const [statusLabelFilter, setStatusLabelFilter] = useState("all");
+  const [supabaseUsers, setSupabaseUsers] = useState([]);
 
   const { checklist, loading, history, hasMore, currentPage } = useSelector((state) => state.checkList);
   const dispatch = useDispatch();
@@ -62,6 +64,17 @@ function AccountDataPage() {
     dispatch(checklistHistoryData(1))
     dispatch(uniqueDoerNameData());
 
+    const fetchUsers = async () => {
+      const { data, error } = await supabase
+        .from('users')
+        .select('user_name')
+        .order('user_name', { ascending: true });
+      if (data) {
+        const uniqueNames = [...new Set(data.map(u => u.user_name))].filter(Boolean);
+        setSupabaseUsers(uniqueNames);
+      }
+    };
+    fetchUsers();
   }, [dispatch])
 
   useEffect(() => {
@@ -502,20 +515,20 @@ function AccountDataPage() {
   }
 
   const getFilteredMembersList = () => {
-    // Get unique names from both checklist (pending tasks) and history
-    const checklistNames = Array.isArray(checklist) ? checklist.map(item => item.name) : [];
-    const historyNames = Array.isArray(history) ? history.map(item => item.name) : [];
-    
-    // Combine and get unique values, filtering out null/undefined/empty
-    const activeNames = [...new Set([...checklistNames, ...historyNames])]
-      .filter(name => name && name.trim() !== "");
-
     if (userRole === "admin") {
+      // Use users from Supabase users table if available, fallback to active names from data
+      if (supabaseUsers.length > 0) {
+        return supabaseUsers;
+      }
+
+      // Fallback logic (original)
+      const checklistNames = Array.isArray(checklist) ? checklist.map(item => item.name) : [];
+      const historyNames = Array.isArray(history) ? history.map(item => item.name) : [];
+      const activeNames = [...new Set([...checklistNames, ...historyNames])]
+        .filter(name => name && name.trim() !== "");
       return activeNames.sort((a, b) => a.localeCompare(b));
     } else {
-      return activeNames
-        .filter((member) => member.toLowerCase() === username.toLowerCase())
-        .sort((a, b) => a.localeCompare(b));
+      return [username].filter(member => member && member.trim() !== "");
     }
   }
 

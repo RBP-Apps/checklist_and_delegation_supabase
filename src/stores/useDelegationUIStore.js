@@ -4,6 +4,8 @@ const useDelegationUIStore = create((set, get) => ({
     // --- Filters ---
     searchTerm: "",
     dateFilter: "all",
+    nameFilter: "All Names",
+    givenByFilter: "All Given By",
     startDate: "",
     endDate: "",
     showHistory: false,
@@ -18,12 +20,14 @@ const useDelegationUIStore = create((set, get) => ({
     // --- Actions ---
     setSearchTerm: (term) => set({ searchTerm: term }),
     setDateFilter: (filter) => set({ dateFilter: filter }),
+    setNameFilter: (name) => set({ nameFilter: name }),
+    setGivenByFilter: (givenBy) => set({ givenByFilter: givenBy }),
     setStartDate: (date) => set({ startDate: date }),
     setEndDate: (date) => set({ endDate: date }),
     toggleHistory: () => set((state) => ({
         showHistory: !state.showHistory,
         // Reset filters when toggling
-        searchTerm: "", startDate: "", endDate: "", dateFilter: "all"
+        searchTerm: "", startDate: "", endDate: "", dateFilter: "all", nameFilter: "All Names", givenByFilter: "All Given By"
     })),
 
     // --- Selection Actions ---

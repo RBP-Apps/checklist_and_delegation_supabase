@@ -8,12 +8,16 @@ const DelegationHeader = ({
     handleSubmit,
     isSubmitting,
     successMessage,
-    setSuccessMessage
+    setSuccessMessage,
+    users = [],
+    givenByList = []
 }) => {
     const {
         showHistory, toggleHistory,
         searchTerm, setSearchTerm,
         dateFilter, setDateFilter,
+        nameFilter, setNameFilter,
+        givenByFilter, setGivenByFilter,
         selectedItems
     } = useDelegationUIStore();
 
@@ -39,18 +43,38 @@ const DelegationHeader = ({
                         />
                     </div>
 
-                    {/* Label Filter (Active Only) */}
-                    {!showHistory && (
+                    {/* Label & Name Filters */}
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                        {!showHistory && (
+                            <div className="relative w-full sm:w-48">
+                                <select
+                                    value={dateFilter}
+                                    onChange={(e) => setDateFilter(e.target.value)}
+                                    className="w-full appearance-none bg-white border border-purple-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
+                                >
+                                    <option value="all">All Labels</option>
+                                    <option value="today">Today</option>
+                                    <option value="upcoming">Upcoming</option>
+                                    <option value="overdue">Overdue</option>
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-500">
+                                    <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="relative w-full sm:w-48">
                             <select
-                                value={dateFilter}
-                                onChange={(e) => setDateFilter(e.target.value)}
+                                value={nameFilter}
+                                onChange={(e) => setNameFilter(e.target.value)}
                                 className="w-full appearance-none bg-white border border-purple-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
                             >
-                                <option value="all">All Labels</option>
-                                <option value="today">Today</option>
-                                <option value="upcoming">Upcoming</option>
-                                <option value="overdue">Overdue</option>
+                                <option value="All Names">All Names</option>
+                                {users.map((name, index) => (
+                                    <option key={index} value={name}>{name}</option>
+                                ))}
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-500">
                                 <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
@@ -58,7 +82,25 @@ const DelegationHeader = ({
                                 </svg>
                             </div>
                         </div>
-                    )}
+
+                        <div className="relative w-full sm:w-48">
+                            <select
+                                value={givenByFilter}
+                                onChange={(e) => setGivenByFilter(e.target.value)}
+                                className="w-full appearance-none bg-white border border-purple-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
+                            >
+                                <option value="All Given By">All Given By</option>
+                                {givenByList.map((name, index) => (
+                                    <option key={index} value={name}>{name}</option>
+                                ))}
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-purple-500">
+                                <svg className="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
 
                     {/* Actions */}
                     <div className="flex gap-2">

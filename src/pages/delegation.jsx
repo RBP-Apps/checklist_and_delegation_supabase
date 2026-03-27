@@ -16,6 +16,8 @@ function DelegationDataPage() {
     activeTasks,
     historyTasks,
     userRole,
+    users,
+    givenByList,
     refreshData
   } = useDelegationData();
 
@@ -38,6 +40,8 @@ function DelegationDataPage() {
         isSubmitting={isSubmitting}
         successMessage={successMessage}
         setSuccessMessage={setSuccessMessage}
+        users={users}
+        givenByList={givenByList}
       />
 
       <div className="mt-6">

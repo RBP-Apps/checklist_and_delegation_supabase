@@ -109,7 +109,9 @@ function Approval() {
     confirmationModal,
     setConfirmationModal,
     markingAsDone,
-    resetFilters
+    resetFilters,
+    historyData,
+    delegationHistoryData
   } = useApprovalStore();
 
   const {
@@ -128,10 +130,22 @@ function Approval() {
   const currentData = activeApprovalTab === 'checklist' ? filteredHistoryData : filteredDelegationHistoryData;
 
   const getTaskStatistics = () => {
+    // Determine source data based on active tab
+    const sourceData = activeApprovalTab === 'checklist' ? historyData : delegationHistoryData;
+
+    // A task is considered "Done" if its status is "Yes" (case-insensitive)
+    const isDone = (task) => task.status && task.status.toString().toLowerCase() === 'yes';
+
+    // Total should be all "Yes" tasks in the current tab (unfiltered by user selection, only pre-fetched from DB)
+    const totalCompleted = sourceData.filter(isDone).length;
+
+    // Filtered total should be "Yes" tasks matching CURRENT filters
+    const filteredTotal = currentData.filter(isDone).length;
+
     const memberStats = selectedMembers.length > 0
       ? selectedMembers.reduce((stats, member) => {
         const memberTasks = currentData.filter(
-          (task) => task.name === member
+          (task) => task.name === member && isDone(task)
         ).length;
         return {
           ...stats,
@@ -141,8 +155,8 @@ function Approval() {
       : {};
 
     return {
-      totalCompleted: currentData.length,
-      filteredTotal: currentData.length,
+      totalCompleted,
+      filteredTotal,
       memberStats
     }
   };
