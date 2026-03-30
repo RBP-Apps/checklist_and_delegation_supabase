@@ -141,8 +141,8 @@ function Approval() {
 
     const { scrollTop, scrollHeight, clientHeight } = historyTableContainerRef.current;
     if (scrollTop + clientHeight >= scrollHeight - 100) {
-      if ((activeApprovalTab === 'checklist' && hasMoreChecklist) || 
-          (activeApprovalTab === 'delegation' && hasMoreDelegation)) {
+      if ((activeApprovalTab === 'checklist' && hasMoreChecklist) ||
+        (activeApprovalTab === 'delegation' && hasMoreDelegation)) {
         fetchMoreData();
       }
     }
@@ -155,6 +155,13 @@ function Approval() {
       return () => tableElement.removeEventListener('scroll', handleScrollHistory);
     }
   }, [handleScrollHistory]);
+
+  // Reset scroll to top when tab changes
+  React.useEffect(() => {
+    if (historyTableContainerRef.current) {
+      historyTableContainerRef.current.scrollTop = 0;
+    }
+  }, [activeApprovalTab]);
 
   const isAdmin = userRole === "admin";
   const currentData = activeApprovalTab === 'checklist' ? filteredHistoryData : filteredDelegationHistoryData;
@@ -549,7 +556,11 @@ function Approval() {
                 )}
 
                 {/* History Table - Based on Active Tab */}
-                <div ref={historyTableContainerRef} className="hidden sm:block h-[calc(100vh-320px)] overflow-auto scroll-smooth">
+                <div 
+                  ref={historyTableContainerRef} 
+                  className="hidden sm:block overflow-auto scroll-smooth"
+                  style={{ maxHeight: 'calc(100vh - 320px)' }}
+                >
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
@@ -897,13 +908,13 @@ function Approval() {
                     </div>
                   )}
 
-                  {!isLoadingMore && 
-                   ((activeApprovalTab === 'checklist' && !hasMoreChecklist && historyData.length > 0) || 
-                    (activeApprovalTab === 'delegation' && !hasMoreDelegation && delegationHistoryData.length > 0)) && (
-                    <div className="text-center py-4 text-gray-400 text-[10px] font-bold uppercase tracking-widest bg-gray-50/30">
-                      No more tasks to load
-                    </div>
-                  )}
+                  {!isLoadingMore &&
+                    ((activeApprovalTab === 'checklist' && !hasMoreChecklist && historyData.length > 0) ||
+                      (activeApprovalTab === 'delegation' && !hasMoreDelegation && delegationHistoryData.length > 0)) && (
+                      <div className="text-center py-4 text-gray-400 text-[10px] font-bold uppercase tracking-widest bg-gray-50/30">
+                        No more tasks to load
+                      </div>
+                    )}
                 </div>
 
                 {/* Mobile Card View */}

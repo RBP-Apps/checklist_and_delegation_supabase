@@ -100,7 +100,7 @@ export const useApprovalData = () => {
             const currentUserRole = localStorage.getItem("role");
 
             // Fetch Checklist data - INITIAL PAGE + COUNT
-            const itemsPerPage = 50;
+            const itemsPerPage = 100;
             const { data: checklistData, error: checklistError, count: checklistCount } = await supabase
                 .from('checklist')
                 .select('*', { count: 'exact' })
@@ -138,7 +138,7 @@ export const useApprovalData = () => {
                 .not('status', 'is', null)
                 .order('task_start_date', { ascending: false })
                 .range(0, itemsPerPage - 1);
-                
+
             // Fetch Delegation ADMIN DONE COUNT (Grand total from DB)
             const { count: adminDoneDelegationCount } = await supabase
                 .from('delegation')
@@ -215,19 +215,19 @@ export const useApprovalData = () => {
             setMembersList(finalMembersList);
             setHistoryData(processedChecklistData);
             setDelegationHistoryData(processedDelegationData);
-            
+
             // Set pagination states for page 1
             setChecklistPage(1);
             setDelegationPage(1);
-            setHasMoreChecklist(processedChecklistData.length === 50);
-            setHasMoreDelegation(processedDelegationData.length === 50);
-            
+            setHasMoreChecklist(processedChecklistData.length === 100);
+            setHasMoreDelegation(processedDelegationData.length === 100);
+
             // Set grand totals
             setTotalChecklistCount(checklistCount || 0);
             setTotalDelegationCount(delegationCount || 0);
             setTotalAdminDoneChecklist(adminDoneChecklistCount || 0);
             setTotalAdminDoneDelegation(adminDoneDelegationCount || 0);
-            
+
             setLoading(false);
         } catch (error) {
             console.error("Error fetching sheet data:", error);
@@ -238,74 +238,96 @@ export const useApprovalData = () => {
 
     // NEW: Fetch more data handler for pagination
     const fetchMoreData = useCallback(async () => {
-      try {
-        if (activeApprovalTab === 'checklist') {
-          if (!hasMoreChecklist) return;
-          setIsLoadingMore(true);
-          const nextPage = checklistPage + 1;
-          
-          // Use the API directly or dispatch Redux if preferred, but for now we follow Approval store flow
-          const data = await fetchChechListDataForHistory(nextPage);
-          
-          if (data && data.length > 0) {
-            const processed = data.map((row, index) => {
-              const taskId = row.task_id || "";
-              return {
-                _id: `checklist_task_${taskId}_${nextPage}_${index}`,
-                _sheetType: 'checklist',
-                ...row,
-                task_start_date: parseDateTime(row.task_start_date),
-                submission_date: parseDateTime(row.submission_date),
-              };
-            });
-            
-            setHistoryData(prev => [...prev, ...processed]);
-            setChecklistPage(nextPage);
-            setHasMoreChecklist(data.length === 50);
-          } else {
-            setHasMoreChecklist(false);
-          }
-        } else {
-          if (!hasMoreDelegation) return;
-          setIsLoadingMore(true);
-          const nextPage = delegationPage + 1;
-          
-          const itemsPerPage = 50;
-          const start = (nextPage - 1) * itemsPerPage;
-          const { data, error } = await supabase
-            .from('delegation')
-            .select('*')
-            .not('submission_date', 'is', null)
-            .not('status', 'is', null)
-            .order('task_start_date', { ascending: false })
-            .range(start, start + itemsPerPage - 1);
-            
-          if (error) throw error;
-          
-          if (data && data.length > 0) {
-            const processed = data.map((row, index) => {
-              const taskId = row.task_id || "";
-              return {
-                _id: `delegation_task_${taskId}_${nextPage}_${index}`,
-                _sheetType: 'delegation',
-                ...row,
-                task_start_date: parseDateTime(row.task_start_date),
-                submission_date: parseDateTime(row.submission_date),
-              };
-            });
-            
-            setDelegationHistoryData(prev => [...prev, ...processed]);
-            setDelegationPage(nextPage);
-            setHasMoreDelegation(data.length === 50);
-          } else {
-            setHasMoreDelegation(false);
-          }
+        try {
+            const itemsPerPage = 100;
+            if (activeApprovalTab === 'checklist') {
+                if (!hasMoreChecklist) return;
+                setIsLoadingMore(true);
+                const nextPage = checklistPage + 1;
+
+                let query = supabase
+                    .from('checklist')
+                    .select('*')
+                    .not('submission_date', 'is', null)
+                    .not('status', 'is', null);
+                
+                // Add search logic back to pagination
+                if (searchTerm) {
+                    query = query.or(`task_id.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,given_by.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%,task_description.ilike.%${searchTerm}%`);
+                }
+
+                const start = (nextPage - 1) * itemsPerPage;
+                const { data, error } = await query
+                    .order('task_start_date', { ascending: false })
+                    .range(start, start + itemsPerPage - 1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    const processed = data.map((row, index) => {
+                        const taskId = row.task_id || "";
+                        return {
+                            _id: `checklist_task_${taskId}_${nextPage}_${index}`,
+                            _sheetType: 'checklist',
+                            ...row,
+                            task_start_date: parseDateTime(row.task_start_date),
+                            submission_date: parseDateTime(row.submission_date),
+                        };
+                    });
+
+                    setHistoryData(prev => [...prev, ...processed]);
+                    setChecklistPage(nextPage);
+                    setHasMoreChecklist(data.length === itemsPerPage);
+                } else {
+                    setHasMoreChecklist(false);
+                }
+            } else {
+                if (!hasMoreDelegation) return;
+                setIsLoadingMore(true);
+                const nextPage = delegationPage + 1;
+
+                let query = supabase
+                    .from('delegation')
+                    .select('*')
+                    .not('submission_date', 'is', null)
+                    .not('status', 'is', null);
+                
+                // Add search logic back to pagination
+                if (searchTerm) {
+                    query = query.or(`task_id.ilike.%${searchTerm}%,name.ilike.%${searchTerm}%,given_by.ilike.%${searchTerm}%,department.ilike.%${searchTerm}%,task_description.ilike.%${searchTerm}%`);
+                }
+
+                const start = (nextPage - 1) * itemsPerPage;
+                const { data, error } = await query
+                    .order('task_start_date', { ascending: false })
+                    .range(start, start + itemsPerPage - 1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    const processed = data.map((row, index) => {
+                        const taskId = row.task_id || "";
+                        return {
+                            _id: `delegation_task_${taskId}_${nextPage}_${index}`,
+                            _sheetType: 'delegation',
+                            ...row,
+                            task_start_date: parseDateTime(row.task_start_date),
+                            submission_date: parseDateTime(row.submission_date),
+                        };
+                    });
+
+                    setDelegationHistoryData(prev => [...prev, ...processed]);
+                    setDelegationPage(nextPage);
+                    setHasMoreDelegation(data.length === itemsPerPage);
+                } else {
+                    setHasMoreDelegation(false);
+                }
+            }
+        } catch (err) {
+            console.error("Error loading more data:", err);
+        } finally {
+            setIsLoadingMore(false);
         }
-      } catch (err) {
-        console.error("Error loading more data:", err);
-      } finally {
-        setIsLoadingMore(false);
-      }
     }, [activeApprovalTab, checklistPage, hasMoreChecklist, delegationPage, hasMoreDelegation, setHistoryData, setDelegationHistoryData, setChecklistPage, setDelegationPage, setHasMoreChecklist, setHasMoreDelegation, setIsLoadingMore]);
 
     // Initial Fetch
@@ -466,33 +488,38 @@ export const useApprovalData = () => {
         return data
             .filter((item) => {
                 const matchesSearch = searchTerm
-                    ? Object.values(item).some(value => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase()))
+                    ? Object.entries(item).some(([key, value]) => {
+                        if (['image', 'admin_done'].includes(key)) return false;
+                        return value && value.toString().toLowerCase().includes(searchTerm.toLowerCase());
+                    })
                     : true;
                 const matchesMember = selectedMembers.length > 0 ? selectedMembers.includes(item.name) : true;
 
                 let matchesDateRange = true;
                 if (startDate || endDate) {
-                    const itemDate = parseDateFromDDMMYYYY(item.submission_date);
-                    if (!itemDate) return false;
-                    if (startDate) {
-                        const startDateObj = new Date(startDate);
-                        startDateObj.setHours(0, 0, 0, 0);
-                        if (itemDate < startDateObj) matchesDateRange = false;
-                    }
-                    if (endDate) {
-                        const endDateObj = new Date(endDate);
-                        endDateObj.setHours(23, 59, 59, 999);
-                        if (itemDate > endDateObj) matchesDateRange = false;
-                    }
+                    // Match SalesDataPage logic - use task_start_date for range filtering
+                    const itemDate = new Date(item.task_start_date);
+                    if (!itemDate || isNaN(itemDate.getTime())) return false;
+
+                    const itemDateOnly = new Date(itemDate.getFullYear(), itemDate.getMonth(), itemDate.getDate());
+                    const start = startDate ? new Date(startDate) : null;
+                    if (start) start.setHours(0, 0, 0, 0);
+
+                    const end = endDate ? new Date(endDate) : null;
+                    if (end) end.setHours(23, 59, 59, 999);
+
+                    if (start && itemDateOnly < start) matchesDateRange = false;
+                    if (end && itemDateOnly > end) matchesDateRange = false;
                 }
                 return matchesSearch && matchesMember && matchesDateRange;
             })
             .sort((a, b) => {
-                const dateA = parseDateFromDDMMYYYY(a.submission_date || "");
-                const dateB = parseDateFromDDMMYYYY(b.submission_date || "");
-                if (!dateA) return 1;
-                if (!dateB) return -1;
-                return dateB.getTime() - dateA.getTime();
+                // Match SalesDataPage sorting - newest first by start date
+                const dateA = new Date(a.task_start_date);
+                const dateB = new Date(b.task_start_date);
+                if (!dateA || isNaN(dateA.getTime())) return 1;
+                if (!dateB || isNaN(dateB.getTime())) return -1;
+                return dateB - dateA;
             });
     }
 
