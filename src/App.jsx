@@ -21,6 +21,8 @@ import TrainingVideo from "./pages/TrainingVideo"
 import HolidayList from "./pages/HolidayList"
 import Calendar from "./pages/Calendar"
 
+import TaskUpdate from"./pages/admin/Task-update"
+
 // Auth wrapper component to protect routes
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const username = localStorage.getItem("user-name")
@@ -157,6 +159,15 @@ function App() {
           element={
             <ProtectedRoute>
               <TrainingVideo />
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/dashboard/task-update"
+          element={
+            <ProtectedRoute>
+              <TaskUpdate />
             </ProtectedRoute>
           }
         />

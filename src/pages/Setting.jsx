@@ -4,6 +4,7 @@ import AdminLayout from '../components/layout/AdminLayout';
 import { useDispatch, useSelector } from 'react-redux';
 import { createDepartment, createUser, deleteUser, departmentOnlyDetails, givenByDetails, departmentDetails, updateDepartment, updateUser, userDetails } from '../redux/slice/settingSlice';
 import supabase from '../SupabaseClient';
+import { Eye, EyeOff } from "lucide-react";
 
 const Setting = () => {
   const [activeTab, setActiveTab] = useState('users');
@@ -16,6 +17,8 @@ const Setting = () => {
   const [usernameDropdownOpen, setUsernameDropdownOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeDeptSubTab, setActiveDeptSubTab] = useState('departments');
+
+  const [showPassword, setShowPassword] = useState(false);
 
   // Leave Management State
   const [selectedUsers, setSelectedUsers] = useState([]);
@@ -603,12 +606,12 @@ const Setting = () => {
                               value={userForm.email}
                               onChange={handleUserInputChange}
                               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                              required
+                              // required
                             />
                           </div>
 
-                          {!isEditing && (
-                            <div className="sm:col-span-3">
+                          {/* {!isEditing && ( */}
+                            {/* <div className="sm:col-span-3">
                               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                                 Password
                               </label>
@@ -622,8 +625,33 @@ const Setting = () => {
                                 className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 required={!isEditing}
                               />
-                            </div>
-                          )}
+                            </div> */}
+                            <div className="sm:col-span-3 relative">
+  <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+    Password
+  </label>
+
+  <input
+    type={showPassword ? "text" : "password"}
+    name="password"
+    id="password"
+    autoComplete="new-password"
+    value={userForm.password}
+    onChange={handleUserInputChange}
+    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 pr-10 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+    required={!isEditing}
+  />
+
+  {/* Eye Button */}
+  <button
+    type="button"
+    onClick={() => setShowPassword(!showPassword)}
+    className="absolute inset-y-0 mt-4 right-0 pr-3 flex items-center text-gray-500"
+  >
+    {showPassword ? "🙈" : "👁️"}
+  </button>
+</div>
+                          {/* )} */}
 
                           <div className="sm:col-span-3">
                             <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
@@ -636,7 +664,7 @@ const Setting = () => {
                               value={userForm.phone}
                               onChange={handleUserInputChange}
                               className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                              required
+                              // required
                             />
                           </div>
 

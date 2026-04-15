@@ -39,7 +39,32 @@ export default function AssignTask() {
   } = useAssignTaskStore();
 
 
+  const setState = useAssignTaskStore.setState;
 
+
+  useEffect(() => {
+    if (username) {
+      setState((state) => ({
+        formData: {
+          ...state.formData,
+          givenBy: username
+        }
+      }));
+    }
+  }, [username]);
+
+
+
+  useEffect(() => {
+    if (username && givenBy.length > 0) {
+      setState((state) => ({
+        formData: {
+          ...state.formData,
+          givenBy: username
+        }
+      }));
+    }
+  }, [givenBy, username]);
 
   const frequencies = [
     { value: "one-time", label: "One Time (No Recurrence)" },
@@ -54,6 +79,8 @@ export default function AssignTask() {
     { value: "end-of-3rd-week", label: "End of 3rd Week" },
     { value: "end-of-4th-week", label: "End of 4th Week" },
     { value: "end-of-last-week", label: "End of Last Week" },
+
+
   ];
 
   const getFormattedDate = (date) => {
@@ -121,7 +148,7 @@ export default function AssignTask() {
                 >
                   Given By
                 </label>
-                <select
+                {/* <select
                   id="givenBy"
                   name="givenBy"
                   value={formData.givenBy}
@@ -132,6 +159,31 @@ export default function AssignTask() {
                   <option value="">Select Given By</option>
                   {givenBy.map((person, index) => {
                     const personValue = typeof person === 'object' && person !== null ? person.given_by : person;
+                    return (
+                      <option key={index} value={personValue}>
+                        {personValue}
+                      </option>
+                    );
+                  })}
+                </select> */}
+                <select
+                  id="givenBy"
+                  name="givenBy"
+                  value={formData.givenBy}
+                  onChange={handleChange}
+                  disabled
+                  className="w-full rounded-md border cursor-not-allowed border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  <option value="">Select Given By</option>
+
+                  {/* 👇 ye add karo */}
+                  <option value={username}>{username}</option>
+
+                  {givenBy.map((person, index) => {
+                    const personValue =
+                      typeof person === "object" && person !== null
+                        ? person.given_by
+                        : person;
                     return (
                       <option key={index} value={personValue}>
                         {personValue}

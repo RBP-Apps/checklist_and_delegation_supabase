@@ -24,6 +24,7 @@ import {
   Gift,
   Key,
   Video,
+  ClipboardCheck ,
 } from "lucide-react";
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
@@ -112,13 +113,6 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname.includes("/dashboard/approval"),
       showFor: ["admin"],
     },
-    // {
-    //   href: "/dashboard/mis-report",
-    //   label: "MIS Report",
-    //   icon: CheckSquare,
-    //   active: location.pathname.includes("/dashboard/mis-report"),
-    //   showFor: ["admin"],
-    // },
     {
       href: "/dashboard/calendar",
       label: "Calendar",
@@ -138,6 +132,13 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       label: "Settings",
       icon: Settings,
       active: location.pathname.includes("/dashboard/setting"),
+      showFor: ["admin"],
+    },
+    {
+      href: "/dashboard/task-update",
+      label: "Task Update",
+      icon: ClipboardCheck ,
+      active: location.pathname.includes("/dashboard/task-update"),
       showFor: ["admin"],
     },
     {
