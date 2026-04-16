@@ -22,6 +22,7 @@ import HolidayList from "./pages/HolidayList"
 import Calendar from "./pages/Calendar"
 
 import TaskUpdate from"./pages/admin/Task-update"
+import WorkingDate from "./pages/admin/WorkingDate"
 
 // Auth wrapper component to protect routes
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -168,6 +169,14 @@ function App() {
           element={
             <ProtectedRoute>
               <TaskUpdate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/working-date"
+          element={
+            <ProtectedRoute>
+              <WorkingDate />
             </ProtectedRoute>
           }
         />
