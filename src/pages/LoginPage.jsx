@@ -109,7 +109,7 @@ const LoginPage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <div className="w-full max-w-md shadow-lg border border-blue-200 rounded-lg bg-white">
-       
+
         <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-t-lg">
           <img
             src="/Logo.PNG"
