@@ -3,7 +3,7 @@ import supabase from "../../SupabaseClient";
 // In your API file
 // 1. COMPLETE API FUNCTIONS - checkListApi.js
 
-export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchTerm = '', statusFilter = 'all') => {
+export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchTerm = '', statusFilter = 'all', nameFilter = '') => {
   const role = localStorage.getItem('role');
   const username = localStorage.getItem('user-name');
   const userAccess = localStorage.getItem('user_access');
@@ -14,9 +14,10 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
 
     // Helper to get ISO string that matches local time digits (treating local as UTC)
     // This handles the case where DB stores local timestamps as UTC-naive
+    // Strip 'Z' so the string matches 'timestamp without time zone' column
     const toLocalISOString = (date) => {
       const offset = date.getTimezoneOffset() * 60000;
-      return new Date(date.getTime() - offset).toISOString();
+      return new Date(date.getTime() - offset).toISOString().replace('Z', '');
     };
 
     const todayISO = toLocalISOString(today);
@@ -67,6 +68,15 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
         .order('task_start_date', { ascending: true });
     }
 
+    // Apply name filter (backend-based, from "All Names" dropdown)
+    if (nameFilter && nameFilter.trim() !== '') {
+      query = query.eq('name', nameFilter.trim());
+    } else if (role === 'user' && username) {
+      // Apply role filter only when no explicit name filter is set
+      query = query.eq('name', username);
+    }
+    // Admin users without a name filter see all data
+
     // Apply pagination
     query = query.range(from, to);
 
@@ -75,12 +85,6 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
       const searchValue = searchTerm.trim();
       query = query.or(`task_id.ilike.%${searchValue}%,name.ilike.%${searchValue}%,given_by.ilike.%${searchValue}%,department.ilike.%${searchValue}%,task_description.ilike.%${searchValue}%`);
     }
-
-    // Apply role filter
-    if (role === 'user' && username) {
-      query = query.eq('name', username);
-    }
-    // Admin users see all data (no department filtering)
 
     const { data, error, count } = await query;
 
@@ -98,7 +102,7 @@ export const fetchChechListDataSortByDate = async (page = 1, limit = 50, searchT
   }
 };
 
-export const fetchChechListDataForHistory = async (page = 1, searchTerm = '') => {
+export const fetchChechListDataForHistory = async (page = 1, searchTerm = '', nameFilter = '') => {
   const itemsPerPage = 50;
   const start = (page - 1) * itemsPerPage;
 
@@ -121,10 +125,13 @@ export const fetchChechListDataForHistory = async (page = 1, searchTerm = '') =>
       query = query.or(`task_id.ilike.%${searchValue}%,name.ilike.%${searchValue}%,given_by.ilike.%${searchValue}%,department.ilike.%${searchValue}%,task_description.ilike.%${searchValue}%`);
     }
 
-    if (role === 'user' && username) {
+    // Apply name filter (backend-based, from "All Names" dropdown)
+    if (nameFilter && nameFilter.trim() !== '') {
+      query = query.eq('name', nameFilter.trim());
+    } else if (role === 'user' && username) {
       query = query.eq('name', username);
     }
-    // Admin users see all data (no department filtering)
+    // Admin users without a name filter see all data
 
     const { data, error, count } = await query;
 
@@ -194,11 +201,16 @@ export const updateChecklistData = async (submissionData) => {
       }
 
       // Prepare update object
+      // Build submission_date without timezone suffix for 'timestamp without time zone' column
+      const now = new Date();
+      const offset = now.getTimezoneOffset() * 60000;
+      const localISO = new Date(now.getTime() - offset).toISOString().replace('Z', '');
+
       return {
         task_id: item.taskId,
-        status: item.status, // Convert to boolean if needed
+        status: item.status,
         remark: item.remarks,
-        submission_date: new Date().toISOString(),
+        submission_date: localISO,
         image: imageUrl,
         // // Add other fields as needed
         // department: item.department,

@@ -181,29 +181,29 @@ function WorkingDate() {
     };
 
     // Filter history data based on name and working details
-const filteredHistory = React.useMemo(() => {
-    return historyData.filter((item) => {
-        const matchesName =
-            filterName === "All" || item.name === filterName;
+    const filteredHistory = React.useMemo(() => {
+        return historyData.filter((item) => {
+            const matchesName =
+                filterName === "All" || item.name === filterName;
 
-        const matchesSearch = [
-            item.workingDetails,
-            item.name,
-            item.date,
-            item.time,
-            item.uniqueNumber,
-            item.qty
-        ]
-            .some(field =>
-                (field || "")
-                    .toString()
-                    .toLowerCase()
-                    .includes(searchQuery.toLowerCase())
-            );
+            const matchesSearch = [
+                item.workingDetails,
+                item.name,
+                item.date,
+                item.time,
+                item.uniqueNumber,
+                item.qty
+            ]
+                .some(field =>
+                    (field || "")
+                        .toString()
+                        .toLowerCase()
+                        .includes(searchQuery.toLowerCase())
+                );
 
-        return matchesName && matchesSearch;
-    });
-}, [historyData, filterName, searchQuery]);
+            return matchesName && matchesSearch;
+        });
+    }, [historyData, filterName, searchQuery]);
 
     // Format time string to HH:MM AM/PM
     const formatHistoryTime = (timeStr) => {
@@ -796,9 +796,10 @@ const filteredHistory = React.useMemo(() => {
                             ) : (
                                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-lg">
                                     {/* Desktop Table View */}
-                                    <div className="hidden md:block overflow-x-auto">
+                                    <div className="hidden md:block h-[350px] overflow-y-auto overflow-x-auto">
                                         <table className="w-full text-left">
-                                            <thead className="bg-gradient-to-r from-gray-50 to-blue-50">
+
+                                            <thead className="bg-gradient-to-r from-gray-50 to-blue-50 sticky top-0 z-10">
                                                 <tr>
                                                     <th className="px-6 py-4 text-xs font-bold text-gray-700 uppercase tracking-wider">
                                                         Date

@@ -109,13 +109,24 @@ const LoginPage = () => {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
       <div className="w-full max-w-md shadow-lg border border-blue-200 rounded-lg bg-white">
-        <div className="space-y-1 p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-t-lg">
-          {/* <img
-            src="/logo.png"
+        {/* <div className="space-y-1 p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-t-lg">
+          <img
+            src="/Logo.PNG"
             alt="Company Logo"
-            className="h-auto w-100 mr-3"
-          /> */}
-          <h2 className="text-2xl font-bold text-blue-700 p-2 items-center justify-center">Task Management System</h2>
+            className="h-12 w-auto mr-3"
+          />
+          <h2 className="text-2xl font-bold text-blue-700 p-2 items-center justify-center">
+            Checklist & Delegation System</h2>
+        </div> */}
+        <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-t-lg">
+          <img
+            src="/Logo.PNG"
+            alt="Company Logo"
+            className="h-12 w-auto"
+          />
+          <h2 className="text-2xl font-bold text-blue-700">
+            Checklist & Delegation
+          </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">

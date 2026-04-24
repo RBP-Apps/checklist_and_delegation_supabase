@@ -10,6 +10,41 @@ import {
 
 import AdminLayout from "../../components/layout/AdminLayout";
 import supabase from "../../SupabaseClient";
+import Select from "react-select";
+
+const customStyles = {
+    control: (base, state) => ({
+        ...base,
+        borderColor: state.isFocused ? '#a855f7' : '#e9d5ff',
+        boxShadow: state.isFocused ? '0 0 0 1px #a855f7' : 'none',
+        '&:hover': {
+            borderColor: '#a855f7'
+        },
+        borderRadius: '0.375rem',
+        minHeight: '38px',
+        fontSize: '0.875rem' // text-sm
+    }),
+    option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected ? '#a855f7' : state.isFocused ? '#f3e8ff' : 'white',
+        color: state.isSelected ? 'white' : '#374151',
+        cursor: 'pointer',
+        fontSize: '0.875rem'
+    }),
+    singleValue: (base) => ({
+        ...base,
+        color: '#374151',
+    }),
+    menu: (base) => ({
+        ...base,
+        zIndex: 9999
+    }),
+
+     menuPortal: (base) => ({
+    ...base,
+    zIndex: 9999
+  })
+};
 
 
 function AccountDataPage() {
@@ -46,9 +81,6 @@ function AccountDataPage() {
 
     // State for dropdowns
     const [dashboardType, setDashboardType] = useState("checklist");
-    const [selectedMasterOption, setSelectedMasterOption] = useState("");
-    const [masterSheetOptions, setMasterSheetOptions] = useState([]);
-    const [isFetchingMaster, setIsFetchingMaster] = useState(false);
 
     const [selectedRowsForDate, setSelectedRowsForDate] = useState(new Set());
     const [startDate, setStartDate] = useState("");
@@ -65,8 +97,24 @@ function AccountDataPage() {
     const [savingTaskId, setSavingTaskId] = useState(null);
     const [saveLoading, setSaveLoading] = useState(false);
 
+    const [totalRows, setTotalRows] = useState(0);
+    const [dropdownRawData, setDropdownRawData] = useState([]);
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+
+    // Debounce search term to prevent API spam
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
     const [selectedDepartment, setSelectedDepartment] =
         useState("Select Department");
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const rowsPerPage = 50;
 
     // ✅ Supabase: Task description update
     const handleSaveEdit = async (id, description) => {
@@ -95,13 +143,6 @@ function AccountDataPage() {
         );
     };
 
-    const formatDateToDDMMYYYY = (date) => {
-        const day = date.getDate().toString().padStart(2, "0");
-        const month = (date.getMonth() + 1).toString().padStart(2, "0");
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-    };
-
     useEffect(() => {
         const role = localStorage.getItem("role");
         const user = localStorage.getItem("username");
@@ -111,88 +152,25 @@ function AccountDataPage() {
         setUsername(user || "");
     }, []);
 
-    const parseDateFromDDMMYYYY = (dateStr) => {
-        if (!dateStr || typeof dateStr !== "string") return null;
-        const parts = dateStr.split("/");
-        if (parts.length !== 3) return null;
-        return new Date(parts[2], parts[1] - 1, parts[0]);
-    };
-
-    const sortDateWise = (a, b) => {
-        const dateStrA = a["col6"] || "";
-        const dateStrB = b["col6"] || "";
-        const dateA = parseDateFromDDMMYYYY(dateStrA);
-        const dateB = parseDateFromDDMMYYYY(dateStrB);
-        if (!dateA) return 1;
-        if (!dateB) return -1;
-        return dateA.getTime() - dateB.getTime();
-    };
-
-    // ✅ Department change होने पर सही तरीके से filter करें
-    const filteredAccountData = useMemo(() => {
-        let filtered = accountData;
-
-        // ✅ Department filter (दोनों modes में)
-        if (selectedDepartment !== "Select Department") {
-            filtered = filtered.filter(
-                (account) => account["col2"] === selectedDepartment,
-            );
-        }
-
-        // Search filter
-        if (searchTerm) {
-            filtered = filtered.filter((account) =>
-                Object.values(account).some(
-                    (value) =>
-                        value &&
-                        value.toString().toLowerCase().includes(searchTerm.toLowerCase()),
-                ),
-            );
-        }
-
-        // Name filter
-        const nameFiltered =
-            selectedName !== "All Names"
-                ? filtered.filter((account) => account["col4"] === selectedName)
-                : filtered;
-
-        // Task Description filter
-        const taskFiltered =
-            selectedTaskDescription !== "All Tasks"
-                ? nameFiltered.filter(
-                    (account) => account["col5"] === selectedTaskDescription,
-                )
-                : nameFiltered;
-
-        return taskFiltered;
-    }, [
-        accountData,
-        searchTerm,
-        selectedName,
-        selectedTaskDescription,
-        selectedDepartment, // ✅ यहाँ सही dependency दें
-    ]);
-
     // ✅ NEW: Filtered Names based on selected department
     const filteredMembersList = useMemo(() => {
         if (
             dashboardType === "delegation" &&
             selectedDepartment !== "Select Department"
         ) {
-            const filtered = accountData.filter(
-                (account) => account["col2"] === selectedDepartment,
+            const filtered = dropdownRawData.filter(
+                (row) => row.department === selectedDepartment,
             );
             const membersSet = new Set();
-            filtered.forEach((account) => {
-                const name = account["col4"];
-                if (name && name.trim() !== "") {
-                    membersSet.add(name);
+            filtered.forEach((row) => {
+                if (row.name && row.name.trim() !== "") {
+                    membersSet.add(row.name);
                 }
             });
             return Array.from(membersSet).sort();
         }
         return membersList;
-    }, [dashboardType, selectedDepartment, accountData, membersList]);
+    }, [dashboardType, selectedDepartment, dropdownRawData, membersList]);
 
     // ✅ NEW: Filtered Task Descriptions based on selected department
     const filteredTaskDescriptionList = useMemo(() => {
@@ -200,20 +178,35 @@ function AccountDataPage() {
             dashboardType === "delegation" &&
             selectedDepartment !== "Select Department"
         ) {
-            const filtered = accountData.filter(
-                (account) => account["col2"] === selectedDepartment,
+            const filtered = dropdownRawData.filter(
+                (row) => row.department === selectedDepartment,
             );
             const taskSet = new Set();
-            filtered.forEach((account) => {
-                const task = account["col5"];
-                if (task && task.trim() !== "") {
-                    taskSet.add(task);
+            filtered.forEach((row) => {
+                if (row.task_description && row.task_description.trim() !== "") {
+                    taskSet.add(row.task_description);
                 }
             });
             return Array.from(taskSet).sort();
         }
         return taskDescriptionList;
-    }, [dashboardType, selectedDepartment, accountData, taskDescriptionList]);
+    }, [dashboardType, selectedDepartment, dropdownRawData, taskDescriptionList]);
+
+    // ✅ Select Options for react-select
+    const departmentOptions = useMemo(() => {
+        return ["Select Department", ...uniqueDepartmentsFromTable].map(d => ({ value: d, label: d }));
+    }, [uniqueDepartmentsFromTable]);
+
+    const nameOptions = useMemo(() => {
+        return ["All Names", ...filteredMembersList].map(n => ({ value: n, label: n }));
+    }, [filteredMembersList]);
+
+    const taskOptions = useMemo(() => {
+        return ["All Tasks", ...filteredTaskDescriptionList].map(t => ({
+            value: t,
+            label: t.length > 40 ? `${t.substring(0, 40)}...` : t
+        }));
+    }, [filteredTaskDescriptionList]);
 
     // ✅ Department change होने पर Name और Task Description reset करें
     useEffect(() => {
@@ -223,6 +216,67 @@ function AccountDataPage() {
         }
     }, [selectedDepartment, dashboardType]);
 
+    // Reset pagination to page 1 when any filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [
+        debouncedSearchTerm,
+        selectedDepartment,
+        selectedName,
+        selectedTaskDescription,
+        dashboardType
+    ]);
+
+    const totalPages = Math.ceil(totalRows / rowsPerPage);
+
+    // ✅ Fetch just the dropdown items (runs once per dashboardType)
+    const fetchDropdownData = useCallback(async () => {
+        try {
+            const tableName = dashboardType === "delegation" ? "delegation" : "checklist";
+
+            const { count } = await supabase
+                .from(tableName)
+                .select('task_id', { count: 'exact', head: true });
+
+            const pages = Math.ceil((count || 0) / 1000);
+            const promises = [];
+            for (let i = 0; i < pages; i++) {
+                promises.push(
+                    supabase
+                        .from(tableName)
+                        .select('department, name, task_description')
+                        .range(i * 1000, (i + 1) * 1000 - 1)
+                );
+            }
+
+            const results = await Promise.all(promises);
+            let allRaw = [];
+            const membersSet = new Set();
+            const taskSet = new Set();
+            const departmentSet = new Set();
+
+            results.forEach(res => {
+                (res.data || []).forEach(row => {
+                    allRaw.push(row);
+                    if (row.name) membersSet.add(row.name);
+                    if (row.task_description) taskSet.add(row.task_description);
+                    if (row.department) departmentSet.add(row.department);
+                });
+            });
+
+            setDropdownRawData(allRaw);
+            setMembersList([...membersSet].sort());
+            setTaskDescriptionList([...taskSet].sort());
+            setUniqueDepartmentsFromTable([...departmentSet].sort());
+        } catch (error) {
+            console.error("Dropdown fetch error", error);
+        }
+    }, [dashboardType]);
+
+    useEffect(() => {
+        fetchDropdownData();
+    }, [fetchDropdownData]);
+
     // ✅ Supabase: Fetch data from checklist or delegation table
     const fetchSheetData = useCallback(async () => {
         try {
@@ -231,27 +285,41 @@ function AccountDataPage() {
 
             const tableName = dashboardType === "delegation" ? "delegation" : "checklist";
 
-            const { data: rows, error: fetchError } = await supabase
-                .from(tableName)
-                .select("*")
-                .order("task_id", { ascending: true });
+            let query = supabase.from(tableName).select('*', { count: 'exact' });
+
+            // Apply Filters Server-Side
+            if (selectedDepartment !== "Select Department") {
+                query = query.eq('department', selectedDepartment);
+            }
+            if (selectedName !== "All Names") {
+                query = query.eq('name', selectedName);
+            }
+            if (selectedTaskDescription !== "All Tasks") {
+                query = query.eq('task_description', selectedTaskDescription);
+            }
+            if (debouncedSearchTerm) {
+                const term = `%${debouncedSearchTerm}%`;
+                query = query.or(`department.ilike.${term},name.ilike.${term},task_description.ilike.${term},given_by.ilike.${term},status.ilike.${term}`);
+            }
+
+            // Pagination limits
+            const startIndex = (currentPage - 1) * rowsPerPage;
+            query = query
+                .order("task_id", { ascending: true })
+                .range(startIndex, startIndex + rowsPerPage - 1);
+
+            const { data: rows, count, error: fetchError } = await query;
 
             if (fetchError) throw new Error(fetchError.message);
 
-            const membersSet = new Set();
-            const taskSet = new Set();
-            const departmentSet = new Set();
+            setTotalRows(count || 0);
 
             const mapped = (rows || []).map((row, index) => {
-                if (row.name) membersSet.add(row.name);
-                if (row.task_description) taskSet.add(row.task_description);
-                if (row.department) departmentSet.add(row.department);
-
                 return {
                     // 🔑 Internal keys
                     _id: row.task_id,
                     _taskId: row.task_id,
-                    _rowIndex: index + 1,
+                    _rowIndex: startIndex + index + 1,
                     _sheetName: tableName,
 
                     // 👇 UI EXPECTED colX FORMAT
@@ -284,9 +352,6 @@ function AccountDataPage() {
             });
 
             setAccountData(mapped);
-            setMembersList([...membersSet].sort());
-            setTaskDescriptionList([...taskSet].sort());
-            setUniqueDepartmentsFromTable([...departmentSet].sort());
 
             setLoading(false);
         } catch (err) {
@@ -294,32 +359,14 @@ function AccountDataPage() {
             setError(err.message);
             setLoading(false);
         }
-    }, [dashboardType]);
-
-    const fetchMasterSheetColumnA = async () => {
-        try {
-            setIsFetchingMaster(true);
-
-            if (uniqueDepartmentsFromTable.length === 0) return;
-
-            const options = ["Select Department", ...uniqueDepartmentsFromTable];
-            setMasterSheetOptions(options);
-
-            if (!selectedMasterOption) {
-                setSelectedMasterOption(options[0]);
-            }
-        } catch (err) {
-            console.error("Department load error:", err);
-        } finally {
-            setIsFetchingMaster(false);
-        }
-    };
-
-    useEffect(() => {
-        if (uniqueDepartmentsFromTable.length > 0) {
-            fetchMasterSheetColumnA();
-        }
-    }, [uniqueDepartmentsFromTable]);
+    }, [
+        dashboardType,
+        currentPage,
+        selectedDepartment,
+        selectedName,
+        selectedTaskDescription,
+        debouncedSearchTerm
+    ]);
 
     useEffect(() => {
         fetchSheetData();
@@ -381,7 +428,7 @@ function AccountDataPage() {
 
             if (checked) {
                 // ✅ ALL rows selected
-                const allIds = new Set(filteredAccountData.map((item) => item._id));
+                const allIds = new Set(accountData.map((item) => item._id));
                 setSelectedItems(allIds);
                 setSelectedRowsForDate(allIds); // ✅ ALSO update selectedRowsForDate
             } else {
@@ -390,7 +437,7 @@ function AccountDataPage() {
                 setSelectedRowsForDate(new Set()); // ✅ ALSO update selectedRowsForDate
             }
         },
-        [filteredAccountData],
+        [accountData],
     );
 
     // Existing state variables के बाद जोड़ें:
@@ -518,64 +565,72 @@ function AccountDataPage() {
                             <div className="flex flex-col gap-3 w-full sm:hidden">
                                 <div className="grid grid-cols-2 gap-3">
                                     {/* Dashboard */}
-                                    <select
-                                        value={dashboardType}
-                                        onChange={(e) => {
-                                            setDashboardType(e.target.value);
-                                            if (e.target.value === "delegation") {
-                                                setSelectedDepartment("DELEGATION");
-                                            } else {
-                                                setSelectedDepartment("Select Department");
-                                            }
-                                        }}
-                                        className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                                    >
-                                        <option value="checklist">Checklist</option>
-                                        <option value="delegation">Delegation</option>
-                                    </select>
+                                    <div className="w-full">
+                                        <Select
+                                            value={{ value: dashboardType, label: dashboardType === "delegation" ? "Delegation" : "Checklist" }}
+                                            onChange={(selected) => {
+                                                setDashboardType(selected.value);
+                                                if (selected.value === "delegation") {
+                                                    setSelectedDepartment("DELEGATION");
+                                                } else {
+                                                    setSelectedDepartment("Select Department");
+                                                }
+                                            }}
+                                            options={[
+                                                { value: "checklist", label: "Checklist" },
+                                                { value: "delegation", label: "Delegation" }
+                                            ]}
+                                            styles={customStyles}
+                                            placeholder="Dashboard"
+                                            menuPlacement="auto"
+                                            menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                                        />
+                                    </div>
 
                                     {/* Department */}
-                                    <select
-                                        value={selectedDepartment}
-                                        onChange={(e) => setSelectedDepartment(e.target.value)}
-                                        className="w-full rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-                                    >
-                                        {masterSheetOptions.map((dept, index) => (
-                                            <option key={index} value={dept}>
-                                                {dept}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="w-full">
+                                        <Select
+                                            value={{ value: selectedDepartment, label: selectedDepartment }}
+                                            onChange={(selected) => setSelectedDepartment(selected.value)}
+                                            options={departmentOptions}
+                                            styles={customStyles}
+                                            isSearchable={true}
+                                            placeholder="Department"
+                                            menuPlacement="auto"
+                                            menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                                        />
+                                    </div>
 
                                     {/* Name */}
-                                    <select
-                                        value={selectedName}
-                                        onChange={(e) => setSelectedName(e.target.value)}
-                                        className="rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 w-full sm:w-[150px]"
-                                    >
-                                        <option value="All Names">All Names</option>
-                                        {filteredMembersList.map((name, index) => (
-                                            <option key={index} value={name}>
-                                                {name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="w-full">
+                                        <Select
+                                            value={{ value: selectedName, label: selectedName }}
+                                            onChange={(selected) => setSelectedName(selected.value)}
+                                            options={nameOptions}
+                                            styles={customStyles}
+                                            isSearchable={true}
+                                            placeholder="Name"
+                                            menuPlacement="auto"
+                                            menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                                        />
+                                    </div>
 
                                     {/* Task Description */}
-                                    <select
-                                        value={selectedTaskDescription}
-                                        onChange={(e) => setSelectedTaskDescription(e.target.value)}
-                                        className="rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 w-full sm:w-[200px]"
-                                    >
-                                        <option value="All Tasks">All Tasks</option>
-                                        {filteredTaskDescriptionList.map((task, index) => (
-                                            <option key={index} value={task}>
-                                                {task.length > 30
-                                                    ? `${task.substring(0, 30)}...`
-                                                    : task}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    <div className="w-full col-span-2 mt-1">
+                                        <Select
+                                            value={{
+                                                value: selectedTaskDescription,
+                                                label: selectedTaskDescription.length > 40 ? `${selectedTaskDescription.substring(0, 40)}...` : selectedTaskDescription
+                                            }}
+                                            onChange={(selected) => setSelectedTaskDescription(selected.value)}
+                                            options={taskOptions}
+                                            styles={customStyles}
+                                            isSearchable={true}
+                                            placeholder="Task Description"
+                                            menuPlacement="auto"
+                                            menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -777,62 +832,68 @@ function AccountDataPage() {
                                     />
                                 </div>
 
-                                <select
-                                    value={dashboardType}
-                                    onChange={(e) => {
-                                        setDashboardType(e.target.value);
-                                        if (e.target.value === "delegation") {
+                                <Select
+                                    value={{ value: dashboardType, label: dashboardType === "delegation" ? "Delegation" : "Checklist" }}
+                                    onChange={(selected) => {
+                                        setDashboardType(selected.value);
+                                        if (selected.value === "delegation") {
                                             setSelectedDepartment("DELEGATION");
                                         } else {
                                             setSelectedDepartment("Select Department");
                                         }
                                     }}
-                                    className="rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 min-w-[140px]"
-                                >
-                                    <option value="checklist">Checklist</option>
-                                    <option value="delegation">Delegation</option>
-                                </select>
+                                    options={[
+                                        { value: "checklist", label: "Checklist" },
+                                        { value: "delegation", label: "Delegation" }
+                                    ]}
+                                    styles={customStyles}
+                                    placeholder="Dashboard"
+                                    menuPlacement="auto"
+                                    className="min-w-[140px]"
+                                    menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                                />
 
                                 {/* Department */}
-                                <select
-                                    value={selectedDepartment}
-                                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                                    className="rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 w-full sm:w-[180px]"
-                                >
-                                    {masterSheetOptions.map((dept, index) => (
-                                        <option key={index} value={dept}>
-                                            {dept}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="w-full sm:w-[180px] z-10">
+                                    <Select
+                                        value={{ value: selectedDepartment, label: selectedDepartment }}
+                                        onChange={(selected) => setSelectedDepartment(selected.value)}
+                                        options={departmentOptions}
+                                        styles={customStyles}
+                                        isSearchable={true}
+                                        placeholder="Department"
+                                        menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                                    />
+                                </div>
 
                                 {/* Name */}
-                                <select
-                                    value={selectedName}
-                                    onChange={(e) => setSelectedName(e.target.value)}
-                                    className="rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 w-full sm:w-[150px]"
-                                >
-                                    <option value="All Names">All Names</option>
-                                    {filteredMembersList.map((name, index) => (
-                                        <option key={index} value={name}>
-                                            {name}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="w-full sm:w-[180px] z-10">
+                                    <Select
+                                        value={{ value: selectedName, label: selectedName }}
+                                        onChange={(selected) => setSelectedName(selected.value)}
+                                        options={nameOptions}
+                                        styles={customStyles}
+                                        isSearchable={true}
+                                        placeholder="Name"
+                                        menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                                    />
+                                </div>
 
                                 {/* Task Description */}
-                                <select
-                                    value={selectedTaskDescription}
-                                    onChange={(e) => setSelectedTaskDescription(e.target.value)}
-                                    className="rounded-md border border-purple-200 p-2 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 w-full sm:w-[200px]"
-                                >
-                                    <option value="All Tasks">All Tasks</option>
-                                    {filteredTaskDescriptionList.map((task, index) => (
-                                        <option key={index} value={task}>
-                                            {task.length > 30 ? `${task.substring(0, 30)}...` : task}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="w-full sm:w-[240px] z-10">
+                                    <Select
+                                        value={{
+                                            value: selectedTaskDescription,
+                                            label: selectedTaskDescription.length > 40 ? `${selectedTaskDescription.substring(0, 40)}...` : selectedTaskDescription
+                                        }}
+                                        onChange={(selected) => setSelectedTaskDescription(selected.value)}
+                                        options={taskOptions}
+                                        styles={customStyles}
+                                        isSearchable={true}
+                                        placeholder="Task Description"
+                                        menuPortalTarget={typeof document !== "undefined" ? document.body : null}
+                                    />
+                                </div>
                             </div>
 
                             {/* ================= DESKTOP: Row 2 (Start Date, End Date, Buttons) ================= */}
@@ -1038,7 +1099,7 @@ function AccountDataPage() {
                     ) : (
                         <>
                             {/* Desktop View - Table */}
-                            <div className="hidden md:block overflow-x-auto max-h-[500px]">
+                            <div className="hidden md:block overflow-x-auto max-h-[370px]">
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-blue-200 sticky top-0 z-30">
                                         <tr>
@@ -1048,8 +1109,8 @@ function AccountDataPage() {
                                                         type="checkbox"
                                                         className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                                                         checked={
-                                                            filteredAccountData.length > 0 &&
-                                                            selectedItems.size === filteredAccountData.length
+                                                            accountData.length > 0 &&
+                                                            selectedItems.size === accountData.length
                                                         }
                                                         onChange={handleSelectAllItems}
                                                     />
@@ -1063,8 +1124,8 @@ function AccountDataPage() {
                                                         type="checkbox"
                                                         className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                                         checked={
-                                                            filteredAccountData.length > 0 &&
-                                                            filteredAccountData.every((account) =>
+                                                            accountData.length > 0 &&
+                                                            accountData.every((account) =>
                                                                 editingTaskIds.has(account._id),
                                                             )
                                                         }
@@ -1072,12 +1133,12 @@ function AccountDataPage() {
                                                             const checked = e.target.checked;
                                                             if (checked) {
                                                                 const allIds = new Set(
-                                                                    filteredAccountData.map((item) => item._id),
+                                                                    accountData.map((item) => item._id),
                                                                 );
                                                                 setEditingTaskIds(allIds);
 
                                                                 const descriptions = {};
-                                                                filteredAccountData.forEach((account) => {
+                                                                accountData.forEach((account) => {
                                                                     descriptions[account._id] =
                                                                         account["col5"] || "";
                                                                 });
@@ -1125,10 +1186,10 @@ function AccountDataPage() {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredAccountData.length > 0 ? (
-                                            filteredAccountData.map((account) => {
+                                        {accountData.length > 0 ? (
+                                            accountData.map((account) => {
                                                 const isSelected = selectedItems.has(account._id);
-                                                const isEditing = editingTaskId === account._id;
+                                                const isEditing = editingTaskIds.has(account._id);
                                                 return (
                                                     <tr
                                                         key={account._id}
@@ -1282,9 +1343,9 @@ function AccountDataPage() {
 
                             {/* Mobile View - Cards */}
                             <div className="md:hidden">
-                                {filteredAccountData.length > 0 ? (
+                                {accountData.length > 0 ? (
                                     <div className="space-y-4 p-4">
-                                        {filteredAccountData.map((account) => {
+                                        {accountData.map((account) => {
                                             const isSelected = selectedItems.has(account._id);
                                             const isEditing = editingTaskIds.has(account._id);
 
@@ -1292,8 +1353,8 @@ function AccountDataPage() {
                                                 <div
                                                     key={account._id}
                                                     className={`border border-gray-200 rounded-lg shadow-sm p-4 ${isSelected
-                                                            ? "bg-purple-50 border-purple-300"
-                                                            : "bg-white"
+                                                        ? "bg-purple-50 border-purple-300"
+                                                        : "bg-white"
                                                         }`}
                                                 >
                                                     {/* Header with checkboxes */}
@@ -1473,6 +1534,62 @@ function AccountDataPage() {
                                         </p>
                                     </div>
                                 )}
+                            </div>
+
+                            {/* Pagination Controls */}
+                            <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
+                                <div className="flex justify-between sm:hidden w-full">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="relative inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                        Previous
+                                    </button>
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages || totalPages === 0}
+                                        className="relative ml-3 inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                                    >
+                                        Next
+                                    </button>
+                                </div>
+                                <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                                    <div>
+                                        <p className="text-sm text-gray-700">
+                                            Showing <span className="font-medium">{accountData.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * rowsPerPage, totalRows)}</span> of <span className="font-medium">{totalRows}</span> results
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                            <button
+                                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                disabled={currentPage === 1}
+                                                className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                                            >
+                                                <span className="sr-only">Previous</span>
+                                                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                    <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+
+                                            <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
+                                                Page {currentPage} of {totalPages || 1}
+                                            </span>
+
+                                            <button
+                                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                disabled={currentPage === totalPages || totalPages === 0}
+                                                className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50"
+                                            >
+                                                <span className="sr-only">Next</span>
+                                                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                                    <path fillRule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clipRule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </nav>
+                                    </div>
+                                </div>
                             </div>
                         </>
                     )}

@@ -24,7 +24,7 @@ import {
   Gift,
   Key,
   Video,
-  ClipboardCheck ,
+  ClipboardCheck,
 } from "lucide-react";
 
 export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
@@ -134,13 +134,13 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
       active: location.pathname.includes("/dashboard/setting"),
       showFor: ["admin"],
     },
-    // {
-    //   href: "/dashboard/task-update",
-    //   label: "Task Update",
-    //   icon: ClipboardCheck ,
-    //   active: location.pathname.includes("/dashboard/task-update"),
-    //   showFor: ["admin"],
-    // },
+    {
+      href: "/dashboard/task-update",
+      label: "Task Update",
+      icon: ClipboardCheck,
+      active: location.pathname.includes("/dashboard/task-update"),
+      showFor: ["admin"],
+    },
     {
       href: "/dashboard/working-date",
       label: "Working Date",
@@ -202,8 +202,12 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             to="/dashboard/admin"
             className="flex items-center gap-2 font-semibold text-blue-700"
           >
-            <ClipboardList className="h-5 w-5 text-blue-600" />
-            <span>Task Management System </span>
+            <img
+              src="/Logo.PNG"
+              alt="Company Logo"
+              className="h-8 w-auto text-blue-600"
+            />
+            <span>Checklist & Delegation </span>
           </Link>
         </div>
         <nav className="flex-1 overflow-y-auto p-2">
@@ -380,8 +384,12 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                 className="flex items-center gap-2 font-semibold text-blue-700"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <ClipboardList className="h-5 w-5 text-blue-600" />
-                <span>Task Management System</span>
+                <img
+              src="/Logo.PNG"
+              alt="Company Logo"
+              className="h-8 w-auto text-blue-600"
+            />
+                <span>Checklist & Delegation </span>
               </Link>
             </div>
             <nav className="flex-1 overflow-y-auto p-2 bg-white">
@@ -541,7 +549,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
         <header className="flex h-14 items-center justify-between border-b border-blue-200 bg-white px-4 md:px-6">
           <div className="flex md:hidden w-8"></div>
           <h1 className="text-lg font-semibold text-blue-700">
-            Task Management System
+            Checklist & Delegation
           </h1>
           <div className="flex items-center">
             {/* <img

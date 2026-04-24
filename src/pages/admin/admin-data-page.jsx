@@ -19,18 +19,6 @@ const CONFIG = {
   }
 }
 
-// Admin page has dynamic columns in original code, but they follow a pattern.
-// Original code mapped headers from response. 
-// We will define standard columns based on typical usage, but the generic hook grabs all cols.
-// Let's rely on standard index mapping as defined in useSheetData.
-// Or we can create specific column defs if we know them.
-// Looking at original code:
-// It fetched headers from API! `data.table.cols`
-// This is a difference. Account page had hardcoded headers. Admin page fetched them.
-// However, for refactoring stability, hardcoding known columns is often safer if structure shouldn't change.
-// The code accessed specific indices: 11 (L), 12 (M), 15 (P), 16 (Q).
-// Let's define the standard columns based on our analysis of the "Admin" sheet structure.
-// If the user adds columns in sheets this might break, but that's true for the original logic too (hardcoded indices).
 
 const createColumns = (isHistory) => [
   { label: "Timestamp", key: "col0" },

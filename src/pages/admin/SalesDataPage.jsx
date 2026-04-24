@@ -6,7 +6,6 @@ import { useDispatch, useSelector } from "react-redux"
 import { checklistData, checklistHistoryData, updateChecklist } from "../../redux/slice/checklistSlice"
 import { postChecklistAdminDoneAPI } from "../../redux/api/checkListApi"
 import { uniqueDoerNameData } from "../../redux/slice/assignTaskSlice";
-import { useNavigate } from "react-router-dom"
 import Modal from "../../components/common/Modal"
 import supabase from "../../SupabaseClient"
 
@@ -60,8 +59,8 @@ function AccountDataPage() {
   console.log(doerName)
 
   useEffect(() => {
-    dispatch(checklistData({ page: 1, searchTerm: '', statusFilter: 'all' }))
-    dispatch(checklistHistoryData(1))
+    dispatch(checklistData({ page: 1, searchTerm: '', statusFilter: 'all', nameFilter: '' }))
+    dispatch(checklistHistoryData({ page: 1, nameFilter: '' }))
     dispatch(uniqueDoerNameData());
 
     const fetchUsers = async () => {
@@ -88,18 +87,19 @@ function AccountDataPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Debounce filter updates (removed searchTerm to prevent API overriding client-side search)
+  // Debounce filter updates
   useEffect(() => {
     const timer = setTimeout(() => {
       dispatch(checklistData({
         page: 1,
-        searchTerm: '', // Keep empty as we search client-side
-        statusFilter: statusLabelFilter
+        searchTerm: '',
+        statusFilter: statusLabelFilter,
+        nameFilter: selectedMembers[0] || ''
       }));
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [statusLabelFilter, dispatch]);
+  }, [statusLabelFilter, selectedMembers, dispatch]);
 
   const handleScrollPending = useCallback(() => {
     if (!tableContainerRef.current || loading || isFetchingMore || !hasMore || checklist.length === 0) return
@@ -112,11 +112,12 @@ function AccountDataPage() {
       dispatch(checklistData({
         page: currentPage + 1,
         searchTerm,
-        statusFilter: statusLabelFilter
+        statusFilter: statusLabelFilter,
+        nameFilter: selectedMembers[0] || ''
       }))
         .finally(() => setIsFetchingMore(false))
     }
-  }, [loading, isFetchingMore, hasMore, currentPage, dispatch, checklist.length, searchTerm, statusLabelFilter])
+  }, [loading, isFetchingMore, hasMore, currentPage, dispatch, checklist.length, searchTerm, statusLabelFilter, selectedMembers])
 
   // Handle scroll for history
   const handleScrollHistory = useCallback(() => {
@@ -127,7 +128,7 @@ function AccountDataPage() {
 
     if (isNearBottom) {
       setIsLoadingMoreHistory(true)
-      dispatch(checklistHistoryData(currentPageHistory + 1))
+      dispatch(checklistHistoryData({ page: currentPageHistory + 1, nameFilter: selectedMembers[0] || '' }))
         .then((result) => {
           if (result.payload && result.payload.length < 50) {
             setHasMoreHistory(false)
@@ -136,7 +137,7 @@ function AccountDataPage() {
         })
         .finally(() => setIsLoadingMoreHistory(false))
     }
-  }, [isLoadingMoreHistory, hasMoreHistory, currentPageHistory, dispatch, history.length])
+  }, [isLoadingMoreHistory, hasMoreHistory, currentPageHistory, dispatch, history.length, selectedMembers])
 
   // Add scroll event listener
   useEffect(() => {
@@ -156,7 +157,6 @@ function AccountDataPage() {
   }, [handleScrollHistory, showHistory])
 
 
-  const ITEMS_PER_PAGE = 100;
 
   // NEW: Admin history selection states
   const [selectedHistoryItems, setSelectedHistoryItems] = useState([])
@@ -166,28 +166,8 @@ function AccountDataPage() {
     itemCount: 0,
   })
 
-  // UPDATED: Format date-time to DD/MM/YYYY HH:MM:SS
-  const formatDateTimeToDDMMYYYY = (date) => {
-    const day = date.getDate().toString().padStart(2, "0")
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    const year = date.getFullYear()
-    const hours = date.getHours().toString().padStart(2, "0")
-    const minutes = date.getMinutes().toString().padStart(2, "0")
-    const seconds = date.getSeconds().toString().padStart(2, "0")
-    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`
-  }
 
-  // UPDATED: Format date only to DD/MM/YYYY (for comparison purposes)
-  const formatDateToDDMMYYYY = (date) => {
-    const day = date.getDate().toString().padStart(2, "0")
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
 
-  const isEmpty = (value) => {
-    return value === null || value === undefined || (typeof value === "string" && value.trim() === "")
-  }
 
   useEffect(() => {
     const role = localStorage.getItem("role")
@@ -200,7 +180,7 @@ function AccountDataPage() {
   useEffect(() => {
     if (showHistory && history.length === 0) {
       setInitialHistoryLoading(true)
-      dispatch(checklistHistoryData(1))
+      dispatch(checklistHistoryData({ page: 1, nameFilter: selectedMembers[0] || '' }))
         .then((result) => {
           if (result.payload && result.payload.length < 50) {
             setHasMoreHistory(false)
@@ -209,73 +189,7 @@ function AccountDataPage() {
         .finally(() => setInitialHistoryLoading(false))
     }
   }, [showHistory, history.length, dispatch])
-
-  // UPDATED: Parse Google Sheets date-time to handle DD/MM/YYYY HH:MM:SS format
-  const parseGoogleSheetsDateTime = (dateTimeStr) => {
-    if (!dateTimeStr) return ""
-    // If already in DD/MM/YYYY HH:MM:SS format, return as is
-    if (typeof dateTimeStr === "string" && dateTimeStr.match(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/)) {
-      return dateTimeStr
-    }
-    // If in DD/MM/YYYY format (without time), return as is
-    if (typeof dateTimeStr === "string" && dateTimeStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-      return dateTimeStr
-    }
-    // Handle Google Sheets Date(year,month,day) format
-    if (typeof dateTimeStr === "string" && dateTimeStr.startsWith("Date(")) {
-      const match = /Date\((\d+),(\d+),(\d+)\)/.exec(dateTimeStr)
-      if (match) {
-        const year = Number.parseInt(match[1], 10)
-        const month = Number.parseInt(match[2], 10)
-        const day = Number.parseInt(match[3], 10)
-        return `${day.toString().padStart(2, "0")}/${(month + 1).toString().padStart(2, "0")}/${year}`
-      }
-    }
-    // Try to parse as a regular date
-    try {
-      const date = new Date(dateTimeStr)
-      if (!isNaN(date.getTime())) {
-        // Check if the original string contained time information
-        if (typeof dateTimeStr === "string" && (dateTimeStr.includes(":") || dateTimeStr.includes("T"))) {
-          return formatDateTimeToDDMMYYYY(date)
-        } else {
-          return formatDateToDDMMYYYY(date)
-        }
-      }
-    } catch (error) {
-      console.error("Error parsing date-time:", error)
-    }
-    return dateTimeStr
-  }
-
-  // UPDATED: Parse date from DD/MM/YYYY or DD/MM/YYYY HH:MM:SS format for comparison
-  const parseDateFromDDMMYYYY = (dateStr) => {
-    if (!dateStr || typeof dateStr !== "string") return null;
-
-    const [datePart] = dateStr.split(" ");
-    const parts = datePart.split("/");
-
-    if (parts.length !== 3) return null;
-
-    return new Date(parts[2], parts[1] - 1, parts[0]); // yyyy, mm (0-indexed), dd
-  };
-
-
-
-  const sortDateWise = (a, b) => {
-    // For current data structure, use task_start_date instead of col6
-    const dateStrA = a.task_start_date || ""
-    const dateStrB = b.task_start_date || ""
-
-    const dateA = new Date(dateStrA)
-    const dateB = new Date(dateStrB)
-
-    if (!dateA || isNaN(dateA.getTime())) return 1
-    if (!dateB || isNaN(dateB.getTime())) return -1
-
-    return dateA.getTime() - dateB.getTime()
-  }
-
+ 
   const resetFilters = () => {
     setSearchTerm("")
     setSelectedMembers([])
@@ -382,7 +296,7 @@ function AccountDataPage() {
       setSelectedHistoryItems([]);
 
       // Refresh data
-      dispatch(checklistHistoryData());
+      dispatch(checklistHistoryData({ page: 1, nameFilter: selectedMembers[0] || '' }));
 
       setSuccessMessage(
         `Successfully marked ${selectedHistoryItems.length} items as admin processed!`
@@ -401,7 +315,7 @@ function AccountDataPage() {
 
     let filtered = checklist;
 
-    // Apply search filter across all columns
+    // Apply search filter across all columns (client-side for general text search)
     if (searchTerm) {
       filtered = filtered.filter((account) =>
         Object.values(account).some(
@@ -412,16 +326,12 @@ function AccountDataPage() {
       );
     }
 
-    // NEW: Apply member filter
-    if (selectedMembers.length > 0) {
-      filtered = filtered.filter((account) =>
-        selectedMembers.includes(account.name)
-      );
-    }
+    // NOTE: Name filtering is handled by the backend (nameFilter param).
+    // selectedMembers is only kept in state to pass as nameFilter on re-fetches.
 
     return filtered;
 
-  }, [checklist, searchTerm, selectedMembers]);
+  }, [checklist, searchTerm]);
 
   const filteredHistoryData = useMemo(() => {
     if (!Array.isArray(history)) return []
@@ -436,10 +346,8 @@ function AccountDataPage() {
           })
           : true
 
-        // Member filter
-        const matchesMember = selectedMembers.length > 0
-          ? selectedMembers.includes(item.name)
-          : true
+        // NOTE: Name filtering is handled by the backend (nameFilter param).
+        // No client-side member filter here.
 
         // Date range filter
         let matchesDateRange = true
@@ -469,7 +377,7 @@ function AccountDataPage() {
           if (end && itemDateOnly > end) matchesDateRange = false
         }
 
-        return matchesSearch && matchesMember && matchesDateRange
+        return matchesSearch && matchesDateRange
       })
       .sort((a, b) => {
         const dateA = parseSupabaseDate(a.task_start_date)
@@ -481,7 +389,7 @@ function AccountDataPage() {
 
     // Return only the items for current page
     return filtered.slice(0, currentPageHistory * 50) // 50 items per page
-  }, [history, searchTerm, selectedMembers, startDate, endDate, currentPageHistory])
+  }, [history, searchTerm, startDate, endDate, currentPageHistory])
 
 
   const getTaskStatistics = () => {
@@ -504,15 +412,6 @@ function AccountDataPage() {
     }
   }
 
-  const handleMemberSelection = (member) => {
-    setSelectedMembers((prev) => {
-      if (prev.includes(member)) {
-        return prev.filter((item) => item !== member)
-      } else {
-        return [...prev, member]
-      }
-    })
-  }
 
   const getFilteredMembersList = () => {
     if (userRole === "admin") {
@@ -532,30 +431,7 @@ function AccountDataPage() {
     }
   }
 
-  const fetchSheetData = useCallback(async () => {
-    try {
-      const pendingAccounts = []
-      const historyRows = []
 
-      const currentUsername = localStorage.getItem("username")
-      const currentUserRole = localStorage.getItem("role")
-      const today = new Date()
-      const tomorrow = new Date(today)
-      tomorrow.setDate(today.getDate() + 1)
-      const todayStr = formatDateToDDMMYYYY(today)
-      const tomorrowStr = formatDateToDDMMYYYY(tomorrow)
-      console.log("Filtering dates:", { todayStr, tomorrowStr })
-
-      const membersSet = new Set()
-      let rows = []
-
-      setAccountData(checklist)
-      setHistoryData(history)
-    } catch (error) {
-      console.error("Error fetching sheet data:", error)
-      setError("Failed to load account data: " + error.message)
-    }
-  }, [])
 
   // Checkbox handlers with better state management
   const handleSelectItem = useCallback((id, isChecked) => {
@@ -652,14 +528,6 @@ function AccountDataPage() {
     );
   };
 
-  const fileToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result)
-      reader.onerror = (error) => reject(error)
-    })
-  }
 
   const toggleHistory = () => {
     setShowHistory((prev) => !prev)
@@ -683,61 +551,26 @@ function AccountDataPage() {
   );
 
 
-  const hasMoreItems = () => {
-    if (showHistory) {
-      const totalFilteredItems = history.filter((item) => {
-        // Apply same filters as in filteredHistoryData
-        const matchesSearch = searchTerm
-          ? Object.entries(item).some(([key, value]) => {
-            if (['image', 'admin_done'].includes(key)) return false;
-            return value && value.toString().toLowerCase().includes(searchTerm.toLowerCase());
-          })
-          : true;
+  const uploadImageToSupabase = async (file, taskId) => {
+  const fileExt = file.name.split(".").pop();
+  const fileName = `${taskId}-${Date.now()}.${fileExt}`;
+  const filePath = `checklist/${fileName}`;
 
-        const matchesMember = selectedMembers.length > 0
-          ? selectedMembers.includes(item.name)
-          : true;
+  const { data, error } = await supabase.storage
+    .from("checklist") // 👈 bucket name
+    .upload(filePath, file);
 
-        let matchesDateRange = true;
-        if (startDate || endDate) {
-          const itemDate = parseSupabaseDate(item.task_start_date);
-          if (!itemDate || isNaN(itemDate.getTime())) return false;
+  if (error) {
+    throw error;
+  }
 
-          const itemDateOnly = new Date(
-            itemDate.getFullYear(),
-            itemDate.getMonth(),
-            itemDate.getDate()
-          );
+  // Public URL generate
+  const { data: publicUrlData } = supabase.storage
+    .from("checklist")
+    .getPublicUrl(filePath);
 
-          const start = startDate ? new Date(startDate) : null;
-          if (start) start.setHours(0, 0, 0, 0);
-
-          const end = endDate ? new Date(endDate) : null;
-          if (end) end.setHours(23, 59, 59, 999);
-
-          if (start && itemDateOnly < start) matchesDateRange = false;
-          if (end && itemDateOnly > end) matchesDateRange = false;
-        }
-
-        return matchesSearch && matchesMember && matchesDateRange;
-      }).length;
-
-      return currentPageHistory * ITEMS_PER_PAGE < totalFilteredItems;
-    } else {
-      const totalFilteredItems = checklist.filter((account) =>
-        searchTerm
-          ? Object.values(account).some(
-            (value) =>
-              value &&
-              value.toString().toLowerCase().includes(searchTerm.toLowerCase())
-          )
-          : true
-      ).length;
-
-      return currentPagePending * ITEMS_PER_PAGE < totalFilteredItems;
-    }
-  };
-
+  return publicUrlData.publicUrl;
+};
 
 
   // UPDATED: MAIN SUBMIT FUNCTION with date-time formatting
@@ -792,32 +625,72 @@ function AccountDataPage() {
     setIsSubmitting(true);
 
     // Prepare the submission data
-    const submissionData = selectedItemsArray.map((id) => {
-      const item = checklist.find((account) => account.task_id === id);
-      const imageData = uploadedImages[id];
+    // const submissionData = selectedItemsArray.map((id) => {
+    //   const item = checklist.find((account) => account.task_id === id);
+    //   const imageData = uploadedImages[id];
 
-      return {
-        taskId: item.task_id,
-        department: item.department,
-        givenBy: item.given_by,
-        name: item.name,
-        taskDescription: item.task_description,
-        taskStartDate: item.task_start_date,
-        frequency: item.frequency,
-        enableReminder: item.enable_reminder,
-        requireAttachment: item.require_attachment,
-        status: additionalData[id] || "",
-        remarks: remarksData[id] || "",
-        image: imageData ? {
-          name: imageData.file.name,
-          type: imageData.file.type,
-          size: imageData.file.size,
-          previewUrl: imageData.previewUrl
-        } : item.image ? {
-          existingImage: typeof item.image === 'string' ? item.image : 'File object'
-        } : null
-      };
-    });
+    //   return {
+    //     taskId: item.task_id,
+    //     department: item.department,
+    //     givenBy: item.given_by,
+    //     name: item.name,
+    //     taskDescription: item.task_description,
+    //     taskStartDate: item.task_start_date,
+    //     frequency: item.frequency,
+    //     enableReminder: item.enable_reminder,
+    //     requireAttachment: item.require_attachment,
+    //     status: additionalData[id] || "",
+    //     remarks: remarksData[id] || "",
+    //     image: imageData ? {
+    //       name: imageData.file.name,
+    //       type: imageData.file.type,
+    //       size: imageData.file.size,
+    //       previewUrl: imageData.previewUrl
+    //     } : item.image ? {
+    //       existingImage: typeof item.image === 'string' ? item.image : 'File object'
+    //     } : null
+    //   };
+    // });
+
+
+    const submissionData = await Promise.all(
+  selectedItemsArray.map(async (id) => {
+    const item = checklist.find((account) => account.task_id === id);
+    const imageData = uploadedImages[id];
+
+    let imageUrl = null;
+
+    // ✅ Upload image if new image exists
+    if (imageData?.file) {
+      try {
+        imageUrl = await uploadImageToSupabase(imageData.file, id);
+      } catch (err) {
+        console.error("Image upload failed:", err);
+        throw new Error(`Image upload failed for task ${id}`);
+      }
+    } else if (item.image) {
+      // existing image
+      imageUrl = item.image;
+    }
+
+    return {
+      taskId: item.task_id,
+      department: item.department,
+      givenBy: item.given_by,
+      name: item.name,
+      taskDescription: item.task_description,
+      taskStartDate: item.task_start_date,
+      frequency: item.frequency,
+      enableReminder: item.enable_reminder,
+      requireAttachment: item.require_attachment,
+      status: additionalData[id] || "",
+      remarks: remarksData[id] || "",
+      image: imageUrl // ✅ FINAL URL store hoga
+    };
+  })
+);
+
+
 
     try {
       console.log("Dispatching updateChecklist with data:", submissionData);
@@ -890,8 +763,20 @@ function AccountDataPage() {
                       const val = e.target.value;
                       if (val) {
                         setSelectedMembers([val]);
+                        dispatch(checklistData({
+                          page: 1,
+                          searchTerm: '',
+                          statusFilter: statusLabelFilter,
+                          nameFilter: val
+                        }));
                       } else {
                         setSelectedMembers([]);
+                        dispatch(checklistData({
+                          page: 1,
+                          searchTerm: '',
+                          statusFilter: statusLabelFilter,
+                          nameFilter: ''
+                        }));
                       }
                     }}
                     className="w-full appearance-none bg-white border border-purple-200 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm sm:text-base pr-10"
@@ -909,6 +794,11 @@ function AccountDataPage() {
                     </svg>
                   </div>
                 </div>
+
+
+
+
+                
               </div>
             )}
             <div className="flex gap-2">
@@ -1021,8 +911,14 @@ function AccountDataPage() {
                             const val = e.target.value;
                             if (val) {
                               setSelectedMembers([val]);
+                              dispatch(checklistHistoryData({ page: 1, nameFilter: val }));
+                              setCurrentPageHistory(1);
+                              setHasMoreHistory(true);
                             } else {
                               setSelectedMembers([]);
+                              dispatch(checklistHistoryData({ page: 1, nameFilter: '' }));
+                              setCurrentPageHistory(1);
+                              setHasMoreHistory(true);
                             }
                           }}
                         >

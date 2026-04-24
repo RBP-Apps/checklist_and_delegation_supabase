@@ -4,8 +4,8 @@ import { fetchChechListDataForHistory, fetchChechListDataSortByDate, postCheckli
 
 export const checklistHistoryData = createAsyncThunk(
   'fetch/history',
-  async (page = 1) => {
-    const histroydata = await fetchChechListDataForHistory(page);
+  async ({ page = 1, nameFilter = '' } = {}) => {
+    const histroydata = await fetchChechListDataForHistory(page, '', nameFilter);
     return { data: histroydata, page };
   }
 );
@@ -13,9 +13,9 @@ export const checklistHistoryData = createAsyncThunk(
 
 export const checklistData = createAsyncThunk(
   'fetch/checklist',
-  async ({ page = 1, searchTerm = '', statusFilter = 'all' }, { rejectWithValue }) => {
+  async ({ page = 1, searchTerm = '', statusFilter = 'all', nameFilter = '' }, { rejectWithValue }) => {
     try {
-      const { data, totalCount } = await fetchChechListDataSortByDate(page, 50, searchTerm, statusFilter);
+      const { data, totalCount } = await fetchChechListDataSortByDate(page, 50, searchTerm, statusFilter, nameFilter);
       return { data, page, totalCount, searchTerm, statusFilter };
     } catch (error) {
       return rejectWithValue(error.response ? error.response.data : error.message);
