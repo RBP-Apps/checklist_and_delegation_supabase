@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { useNavigate } from "react-router-dom"
 import { loginUser } from "../redux/slice/loginSlice"
+import Logo from '../assets/Logo.PNG'
+
 import { LoginCredentialsApi } from "../redux/api/loginApi"
 import supabase from "../SupabaseClient";
 
@@ -112,7 +114,7 @@ const LoginPage = () => {
 
         <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-100 to-purple-100 rounded-t-lg">
           <img
-            src="/Logo.PNG"
+            src={Logo}
             alt="Company Logo"
             className="h-12 w-auto"
           />

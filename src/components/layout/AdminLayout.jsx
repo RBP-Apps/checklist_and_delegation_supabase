@@ -27,6 +27,8 @@ import {
   ClipboardCheck,
 } from "lucide-react";
 
+import Logo from "../../assets/Logo.PNG"
+
 export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -203,7 +205,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             className="flex items-center gap-2 font-semibold text-blue-700"
           >
             <img
-              src="/Logo.PNG"
+              src={Logo}
               alt="Company Logo"
               className="h-8 w-auto text-blue-600"
             />
@@ -385,7 +387,7 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <img
-              src="/Logo.PNG"
+              src={Logo}
               alt="Company Logo"
               className="h-8 w-auto text-blue-600"
             />
@@ -552,11 +554,6 @@ export default function AdminLayout({ children, darkMode, toggleDarkMode }) {
             Checklist & Delegation
           </h1>
           <div className="flex items-center">
-            {/* <img
-              src="/logo.jpg"
-              alt="Company Logo"
-              className="h-8 w-auto md:h-10 lg:h-12 transition-all duration-300"
-            /> */}
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-gradient-to-br from-blue-50 to-purple-50 pb-20 sm:pb-6">
