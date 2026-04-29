@@ -97,7 +97,7 @@ export const fetchUniqueDoerNameDataApi = async () => {
   }
 };
 
-import { notifyTaskAssignment } from "../../utils/whatsappService";
+import { metaNotifyTaskAssignment } from "../../utils/whatsappService";
 
 export const pushAssignTaskApi = async (generatedTasks) => {
   const submitTable =
@@ -123,15 +123,24 @@ export const pushAssignTaskApi = async (generatedTasks) => {
     if (!error && data) {
       console.log("post successfully", data);
 
-      // Send individual notifications for newly assigned tasks
+      // Send notifications (grouped by user to avoid spamming)
+      const uniqueUsers = [...new Set(data.map(t => t.name))];
+      
+      uniqueUsers.forEach(async (userName) => {
+        const firstTask = data.find(t => t.name === userName);
+        if (firstTask) {
+          await metaNotifyTaskAssignment(userName, firstTask);
+        }
+      });
+
+      // Update message_status only for delegation table
       if (submitTable === "delegation") {
-        data.forEach(async (task) => {
-          await notifyTaskAssignment(task.name, task);
+        for (const task of data) {
           await supabase
             .from("delegation")
             .update({ message_status: new Date().toISOString() })
             .eq("task_id", task.task_id);
-        });
+        }
       }
     } else {
       console.log("error when posting data", error);

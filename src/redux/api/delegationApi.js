@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import supabase from "../../SupabaseClient";
-import { notifyTaskExtension } from "../../utils/whatsappService";
+import { metaNotifyTaskExtension } from "../../utils/whatsappService";
 
 export const insertDelegationDoneAndUpdate = createAsyncThunk(
   "delegation/insertDelegationDoneAndUpdate",
@@ -112,7 +112,7 @@ export const insertDelegationDoneAndUpdate = createAsyncThunk(
               delegationUpdate.message_status = new Date().toISOString();
 
               // Notify Admin via WhatsApp
-              notifyTaskExtension(
+              metaNotifyTaskExtension(
                 taskData.name,
                 taskData,
                 new Date(taskData.next_extend_date).toLocaleDateString(),

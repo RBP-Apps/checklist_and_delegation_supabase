@@ -189,84 +189,48 @@ export const notifyTaskExtension = async (userName, task, nextDate) => {
 // ============================================================
 
 /**
- * Core sender — Meta's official WhatsApp Business API (template messages)
+ * Core sender — Calls Supabase Edge Function to securely send Meta template messages
  */
-const sendMetaTemplateMessage = async (phoneNumber, templateName, components = []) => {
-  console.group(`📲 [Meta WhatsApp] Sending template: "${templateName}"`);
-
-  // ── Step 1: Check credentials ──────────────────────────────
-  const token   = import.meta.env.VITE_WHATSAPP_TOKEN;
-  const phoneId = import.meta.env.VITE_WHATSAPP_PHONE_ID;
-
-  console.log("🔑 STEP 1 — Credentials check:");
-  console.log("   phoneId :", phoneId   || "❌ MISSING");
-  console.log("   token   :", token ? `✅ present (${token.slice(0, 20)}...)` : "❌ MISSING");
-
-  if (!token || !phoneId) {
-    console.error("❌ Aborting — credentials missing in .env");
-    console.groupEnd();
-    return { success: false, error: "Missing credentials" };
-  }
-
-  // ── Step 2: Format phone number ────────────────────────────
-  const phone          = String(phoneNumber).replace(/\D/g, "");
-  const formattedPhone = phone.startsWith("91") ? phone : `91${phone}`;
-  console.log(`📞 STEP 2 — Phone: raw="${phoneNumber}" → formatted="${formattedPhone}"`);
-
-  // ── Step 3: Build request body ─────────────────────────────
-  const body = {
-    messaging_product: "whatsapp",
-    to: formattedPhone,
-    type: "template",
-    template: {
-      name: templateName,
-      language: { code: "en" },
-      ...(components.length > 0 && { components }),
-    },
-  };
-  console.log("📦 STEP 3 — Request body:", JSON.stringify(body, null, 2));
-
-  // ── Step 4: Send API request ───────────────────────────────
-  const url = `https://graph.facebook.com/v19.0/${phoneId}/messages`;
-  console.log(`🌐 STEP 4 — POST → ${url}`);
+const sendMetaTemplateMessage = async (phoneNumber, templateName, components = [], languageCode = "en_US") => {
+  console.group(`📲 [Meta WhatsApp Edge] Invoking Edge Function for "${templateName}"`);
+  console.log(`📞 Phone: ${phoneNumber}`);
+  console.log(`📦 Payload:`, { templateName, components, languageCode });
 
   try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+    const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+      body: {
+        to: phoneNumber,
+        templateName: templateName,
+        components: components,
+        languageCode: languageCode
+      }
     });
 
-    // ── Step 5: Parse response ─────────────────────────────
-    console.log(`📡 STEP 5 — HTTP Status: ${response.status} ${response.statusText}`);
-    const result = await response.json();
-    console.log("📨 STEP 6 — API Response:", JSON.stringify(result, null, 2));
-
-    if (result.messages) {
-      console.log(`✅ SUCCESS — Message ID: ${result.messages[0]?.id}`);
-      logWhatsApp.sent(formattedPhone, templateName);
+    if (error) {
+      console.error("❌ Supabase Invoke Error:", error);
+      logWhatsApp.failed(phoneNumber, templateName, error);
       console.groupEnd();
-      return { success: true, result };
-    } else {
-      // ── Common failure reasons ─────────────────────────
-      const errCode = result?.error?.code;
-      const errMsg  = result?.error?.message || "Unknown error";
-      console.error(`❌ FAILED — Code: ${errCode} | Message: ${errMsg}`);
-      if (errCode === 190)  console.warn("💡 Hint: Access token expired or invalid. Generate a new token from Meta Developer Console.");
-      if (errCode === 100)  console.warn("💡 Hint: Template name not found or not approved. Check template name spelling & approval status.");
-      if (errCode === 131030) console.warn("💡 Hint: Phone number not registered on WhatsApp or incorrect format.");
-      logWhatsApp.failed(formattedPhone, templateName, result);
-      console.groupEnd();
-      return { success: false, error: result };
+      return { success: false, error };
     }
-  } catch (error) {
-    console.error("🛑 STEP 4 — Network/fetch error:", error);
-    logWhatsApp.failed(formattedPhone, templateName, error);
+
+    // Checking if the Edge Function returned an error in the response body
+    if (data && data.error) {
+      console.error(`❌ Edge Function returned error:`, data.error);
+      logWhatsApp.failed(phoneNumber, templateName, data);
+      console.groupEnd();
+      return { success: false, error: data };
+    }
+
+    console.log(`✅ SUCCESS — Edge Function Response:`, data);
+    logWhatsApp.sent(phoneNumber, templateName);
     console.groupEnd();
-    return { success: false, error };
+    return { success: true, result: data };
+
+  } catch (err) {
+    console.error("🛑 Network Error invoking Edge Function:", err);
+    logWhatsApp.failed(phoneNumber, templateName, err);
+    console.groupEnd();
+    return { success: false, error: err };
   }
 };
 
@@ -284,6 +248,7 @@ const sendMetaTemplateToUser = async (userName, templateName, components = []) =
 
   if (userError) {
     console.error(`❌ Supabase error fetching phone for "${userName}":`, userError);
+    console.log("💡 Tip: Check if the user exists in the 'users' table and 'user_name' matches exactly.");
     logWhatsApp.noPhone(userName);
     return;
   }
@@ -294,7 +259,7 @@ const sendMetaTemplateToUser = async (userName, templateName, components = []) =
     return;
   }
 
-  console.log(`✅ Phone found for "${userName}": ${user.number}`);
+  console.log(`✅ Phone found for "${userName}": ${user.number}. Proceeding to invoke Edge Function...`);
   await sendMetaTemplateMessage(user.number, templateName, components);
 };
 
@@ -395,7 +360,7 @@ export const metaSendDailyTaskSummary = async (userName) => {
       },
     ];
 
-    await sendMetaTemplateToUser(userName, "daily_task_summary", components);
+    await sendMetaTemplateToUser(userName, "daily_reminder", components);
   } catch (error) {
     logError("WhatsApp", "Meta Daily Summary Error", error);
   }
